@@ -1,25 +1,59 @@
 classdef GeneticAlgorithm
    properties
        population;
-       population_creator;
+       make_individual;
        time;
        fitness;
        crossover;
-       mutation;
+       mutate;
    end
    
    methods
+       % constructor for a GA
+       function ga = GeneticAlgorithm(make_individual, fitness, crossover, mutate)
+          ga.make_individual = make_individual; 
+          ga.fitness = fitness;
+          ga.crossover = crossover;
+          ga.mutate = mutate;
+       end
+       
        % runs the GA and returns the best solution found
        function best = evolve(ga, max_generations, population_size, crossover_rate, mutation_rate)
            ga.time = 0;
-           ga.population = ga.population_creator(population_size);
            
+           % initialize population
+           for i = 1:population_size
+               ga.population(i) = ga.make_individual();
+           end
+           
+           % evolve population
            while ga.time < max_generations
                ga.time = ga.time + 1;
-              
+           
+               % do fitness proportionate selection
                ga.population = selection(ga, population_size);
                
+               % do crossover
+               for i = 1:population_size
+                  if rand < crossover_rate / 2
+                      r = ceil(rand * size(ga.population));
+                      [child1, child2] = ga.crossover(ga.population(i), ga.population(r));
+                      ga.population(i) = child1;
+                      ga.population(r) = child2;
+                  end
+               end
+               
+               % do mutations
+               for i = 1:population_size
+                  if rand < mutation_rate
+                      ga.population(i) = ga.mutate(ga.population(i));
+                  end
+               end
            end
+           
+           % find the best individual in the population
+           [~, best_idx] = max(ga.fitness(ga.population));
+           best = ga.population(best_idx);
        end
        
        % creates a fitness proportionate list of parents

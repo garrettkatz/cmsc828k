@@ -16,9 +16,9 @@ function child = crossover(parent1, parent2)
     end
 end
 
-function child = mutate(parent, mutation_rate)
+function (child1, child2) = mutate(parent, mutation_rate)
     mutations = random(size(parent)) < mutation_rate;
     signs = sign(rand(size(parent)) - 0.5);
-    amount = 
-    child = parent + (mutations * signs);
+    amount = floor(abs(normrnd(0,1,size(parent))));
+    child1 = parent + (mutations * signs * amount);
 end

@@ -1,28 +1,51 @@
 classdef GeneticAlgorithm
    properties
        population;
-       population_creator;
+       make_individual;
        time;
        fitness;
        crossover;
-       mutation;
+       mutate;
    end
    
    methods
+       % constructor for a GA
+       function ga = GeneticAlgorithm(make_individual, fitness, crossover, mutate)
+          ga.make_individual = make_individual; 
+       end
+       
        % runs the GA and returns the best solution found
        function best = evolve(ga, max_generations, population_size, crossover_rate, mutation_rate)
            ga.time = 0;
+           for i = 1:population_size
            ga.population = ga.population_creator(population_size);
            
            while ga.time < max_generations
                ga.time = ga.time + 1;
-              
-               parents = selection(ga, population_size)
+           
+               % do fitness proportionate selection
+               ga.population = selection(ga, population_size);
                
+               % do crossover
+               for i = 1:population_size
+                  if rand < crossover_rate / 2
+                      r = ceil(rand * size(ga.population));
+                      [child1, child2] = ga.crossover(ga.population(i), ga.population(r));
+                      ga.population(i) = child1;
+                      ga.population(r) = child2;
+                  end
+               end
+               
+               % do mutations
+               for i = 1:population_size
+                  if rand < mutation_rate
+                      ga.population(i) = ga.mutate(ga.population(i));
+                  end
+               end
            end
        end
        
-       % creates a fitness proportionate list of indices of parents
+       % creates a fitness proportionate list of parents
        function parents = selection(ga, num_to_select)
            parents = zeros(1,num_to_select);
            
@@ -42,7 +65,7 @@ classdef GeneticAlgorithm
               end
               
               % throw in survivors vector
-              parents(i) = count - 1;
+              parents(i) = ga.population(count - 1);
            end
        end
    end
