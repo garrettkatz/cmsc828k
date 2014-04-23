@@ -37,7 +37,7 @@ classdef OuterTotalisticCellularAutomata < handle
 
             % Get linear indices in rule table
             %idx = sub2ind(size(otca.rule), otca.a+1, nsum + 1);
-            idx = [otca.a + 1, nsum + 1]*[1; otca.K+1] - (otca.K + 1); % faster?
+            idx = [otca.a + 1, nsum + 1]*[1; otca.K+1] - (otca.K + 1); % faster
 
             % Apply rule
             otca.a = otca.rule(idx);
