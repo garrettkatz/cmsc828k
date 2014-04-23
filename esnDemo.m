@@ -15,18 +15,17 @@ T = tanh(T-1); % squash into (-1,1)
 X = 0.2*ones(size(T)); % constant bias
 
 % Initialize an echo state network as in Jaeger 2010
-W = [...
-        0.14*sign(sprandn(400,1,0.5)),... % Input connections
-        0.4*sign(sprandn(400, 400, 0.0125)),... % Reservoir connections
-        0.56*(2*rand(400,1)-1) ... % Feedback connections
-    ];
+W = 0.4*sign(sprandn(400, 400, 0.0125)); % Reservoir connections
 esn = EchoStateNetwork(W);
 disp('effective spectral radius:'); % Should be roughly <= 1
-disp(max(abs(eigs(0.44*W(:,2:end-1) + (1-0.44*0.9)*speye(400),1))));
+disp(max(abs(eigs(0.44*W + (1-0.44*0.9)*speye(400),1))));
 
 % Wrap the echo state network in a reservoir computer object for training
 % (initialize the readout matrix to all zeros)
-rc = ReservoirComputer(esn, zeros(1,400));
+readIn = 0.14*sign(sprandn(400,1,0.5)); % Input connections
+readOut = zeros(1,400);
+readBack = 0.56*(2*rand(400,1)-1); % Feedback connections
+rc = ReservoirComputer(esn, readIn, readOut, readBack);
 
 % Train on the Mackey glass data (only regress on middle 2000)
 rc.train(X, T, 1000:3000);

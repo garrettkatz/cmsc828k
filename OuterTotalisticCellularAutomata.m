@@ -3,18 +3,15 @@ classdef OuterTotalisticCellularAutomata < handle
 % reservoir contract.  Transition rules are represented by a table where
 % entry (k+1, nsum+1) contains the new state for a unit with old state "k"
 % and old neighborhood sum "nsum".  The grid is represented by an adjacency
-% matrix "grid", so that grid*a is a vector of neighborhood sums. xIn and
-% yIn are indices of units that receive external input or feedback,
-% respectively.
+% matrix "grid", so that grid*a is a vector of neighborhood sums.
     properties
         rule; % Rule table
         grid; % Grid adjacency matrix
         K; % Number of states (excluding quiescent state zero)
         a; % Column vector of unit activations
-        xIn; yIn; % weights for external signals
     end
     methods
-        function otca = OuterTotalisticCellularAutomata(rule, grid, K, xIn, yIn)
+        function otca = OuterTotalisticCellularAutomata(rule, grid, K)
         % OuterTotalisticCellularAutomata constructs a cellular automata
         % object with the given rule, grid, and number of states.
         
@@ -22,31 +19,29 @@ classdef OuterTotalisticCellularAutomata < handle
             otca.grid = grid;
             otca.K = K;
             otca.a = zeros(size(grid,1), 1);
-            otca.xIn = xIn; otca.yIn = yIn;
             
         end
-        function pulse(otca, x, y)
+        function pulse(otca, x, b)
         % Pulse updates activations based on input vector x and feedback
-        % vector y.
+        % vector b.
         
+            % rescale external signals from [-1,1] to [0,K]
+            x(x>0) = otca.K*(tanh(x(x>0))+1)/2;
+            b(b>0) = otca.K*(tanh(b(b>0))+1)/2;
+            
             % Get neighborhood sum including external signals
-            nsum = otca.grid*otca.a;
-            nsum(otca.xIn) = nsum(otca.xIn) + x;
-            nsum(otca.yIn) = nsum(otca.yIn) + y;
+            nsum = otca.grid*otca.a + x + b;
             
             % Force to indices
-            nsum = min(max(round(nsum), 0), size(otca.rule,2));
+            nsum = min(max(round(nsum), 0), size(otca.rule,2)-1);
 
             % Get linear indices in rule table
-            %idx = [otca.a + 1, otca.grid*otca.a + 1]*[1; otca.K+1] - otca.K; % faster?
-            idx = sub2ind(size(otca.rule), otca.a+1, nsum + 1);
+            %idx = sub2ind(size(otca.rule), otca.a+1, nsum + 1);
+            idx = [otca.a + 1, nsum + 1]*[1; otca.K+1] - (otca.K + 1); % faster?
 
             % Apply rule
             otca.a = otca.rule(idx);
             
-        end
-        function baby = recombine(otca, babyDaddy)
-            % ?????????
         end
     end
     methods(Static = true)
@@ -79,14 +74,11 @@ classdef OuterTotalisticCellularAutomata < handle
                 
             end
         end
-        function otca = random(dims, K, xNum, yNum)
+        function otca = random(dims, K)
         % random constructs a randomized OuterTotalisticCellularAutomata.
             rule = randi(K+1, [K+1, 4*K+1])-1;
             grid = OuterTotalisticCellularAutomata.makeGrid(dims);
-            in = randperm(prod(dims), xNum+yNum);
-            xIn = in(1:xNum);
-            yIn = in(xNum+1:end);
-            otca = OuterTotalisticCellularAutomata(rule, grid,K, xIn, yIn);
+            otca = OuterTotalisticCellularAutomata(rule, grid, K);
         end
     end
 end

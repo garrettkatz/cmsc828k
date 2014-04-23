@@ -29,7 +29,7 @@ classdef EchoStateNetwork < handle
         % Pulse updates activations based on input vector x and feedback
         % vector y.
         
-            in = esn.W*[x; esn.a; y]; % Propogate signals
+            in = esn.W*esn.a + x + y; % Propogate signals
             in = in + esn.nu*(2*rand(size(in)) - 1); % add noise
             esn.a = (1-esn.dCa)*esn.a + esn.dC*tanh(in); % leak
             
