@@ -134,28 +134,7 @@ classdef Fitness < handle
             %fit = 1./(1+unfit); % invert for fitness in [0,1]
             fit = 1./unfit; % invert for fitness in [0,Inf]
         end
-        function fit = evalOtca(otca, Xsp, Tsp)
-        % evalOtca wraps otca in task-specific reservoirs and evaluates.
-        
-            N = numel(otca.a); % number of units
-            % Mackey
-            ext = randperm(N, 20); % indices of external-signal-receiving units
-            readIn = sparse(ext(1:10), 1, 1, N, 1); % 1st 10 for input
-            readOut = zeros(1, N);
-            readBack = sparse(ext(11:20), 1, 1, N, 1); % last 10 for feedback
-            rcMackey = ReservoirComputer(otca, readIn, readOut, readBack);
-            
-            % Speech
-            numIn = 2; % Number of input-receiving units per channel
-            ext = randperm(N, numIn*13); % 13 input channels
-            readIn = sparse(ext, repmat(1:13, 1, numIn), 1, N, 13);
-            readOut = zeros(10, N); % 10 output channels
-            readBack = zeros(N, 10); % no feedback
-            rcSpeech = ReservoirComputer(otca, readIn, readOut, readBack);
-            
-            % Evaluate
-            fit = Fitness.eval(rcMackey, rcSpeech, Xsp, Tsp);
-            
+        function fit = evalOtca(otca,Xsp,Tsp)
         end
     end
 end

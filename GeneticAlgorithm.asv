@@ -37,7 +37,7 @@ classdef GeneticAlgorithm < handle
                % do crossover
                for i = 1:population_size
                   if rand < crossover_rate / 2
-                      r = ceil(rand * population_size);
+                      r = ceil(rand * size(ga.population));
                       [child1, child2] = ga.crossover(ga.population(i), ga.population(r));
                       ga.population(i) = child1;
                       ga.population(r) = child2;

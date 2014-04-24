@@ -1,0 +1,15 @@
+% Load speech data for individual fitness evaluation
+load SpeechData.mat % loads inputs Xsp and targets Tsp
+indvFit = @(individual) Fitness.evalOtca(individual, Xsp, Tsp);
+
+% Use otcas with a 20 by 20 grid and 256 states
+dims = [20 20]; % grid dimensions
+K = 256;
+
+% initialize function handles for ga
+make_individual = @() OuterTotalisticCellularAutomata.random(dims,K);
+fitness = @(population) arrayfun(indvFit, population);
+crossover = OuterTotalisticCellularAutomata.crossover;
+mutate = OuterTotalisticCellularAutomata.crossover;
+
+ga = GeneticAlgorithm(make_individual, fitness, crossover, mutate);

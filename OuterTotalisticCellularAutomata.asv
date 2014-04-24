@@ -15,12 +15,10 @@ classdef OuterTotalisticCellularAutomata < handle
         % OuterTotalisticCellularAutomata constructs a cellular automata
         % object with the given rule, grid, and number of states.
         
-            if nargin > 0 % check for object array construction
-                otca.rule = rule;
-                otca.grid = grid;
-                otca.K = K;
-                otca.a = zeros(size(grid,1), 1);
-            end
+            otca.rule = rule;
+            otca.grid = grid;
+            otca.K = K;
+            otca.a = zeros(size(grid,1), 1);
             
         end
         function pulse(otca, x, b)
@@ -100,8 +98,8 @@ classdef OuterTotalisticCellularAutomata < handle
             else
                 cols = dims(1);
                 col = ceil(rand * (cols-1));
-                child1 = [parent1.rule(:,1:col),parent2.rule(:,col+1:cols)];
-                child2 = [parent2.rule(:,1:col),parent1.rule(:,col+1:cols)];
+                child1 = [parent1.rule(:,1:col);parent2.rule(:,col+1:cols)];
+                child2 = [parent2.rule(:,1:col);parent1.rule(:,col+1:cols)];
             end
             
             % Wrap child rules in otca objects
@@ -114,8 +112,7 @@ classdef OuterTotalisticCellularAutomata < handle
             signs = sign(rand(size(parent.rule)) - 0.5);
             amount = floor(abs(normrnd(0,1,size(parent.rule))));
             child = parent.rule + (mutations * signs * amount);
-            child = min(max(child, 0), parent.K); % force to legal states
-            child = OuterTotalisticCellularAutomata(child, parent.grid, parent.K); % wrap
+            chi
         end
     end
 end
