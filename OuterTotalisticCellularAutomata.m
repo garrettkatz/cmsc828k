@@ -110,7 +110,7 @@ classdef OuterTotalisticCellularAutomata < handle
             
         end
         function child = mutate(parent, mutation_rate)
-            mutations = random(size(parent.rule)) < mutation_rate;
+            mutations = rand(size(parent.rule)) < mutation_rate;
             signs = sign(rand(size(parent.rule)) - 0.5);
             amount = floor(abs(normrnd(0,1,size(parent.rule))));
             child = parent.rule + (mutations * signs * amount);
