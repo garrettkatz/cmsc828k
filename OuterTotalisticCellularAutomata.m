@@ -98,7 +98,7 @@ classdef OuterTotalisticCellularAutomata < handle
 
             % vertical crossover
             else
-                cols = dims(1);
+                cols = dims(2);
                 col = ceil(rand * (cols-1));
                 child1 = [parent1.rule(:,1:col),parent2.rule(:,col+1:cols)];
                 child2 = [parent2.rule(:,1:col),parent1.rule(:,col+1:cols)];
@@ -113,7 +113,7 @@ classdef OuterTotalisticCellularAutomata < handle
             mutations = rand(size(parent.rule)) < mutation_rate;
             signs = sign(rand(size(parent.rule)) - 0.5);
             amount = floor(abs(normrnd(0,1,size(parent.rule))));
-            child = parent.rule + (mutations * signs * amount);
+            child = parent.rule + (mutations .* signs .* amount);
             child = min(max(child, 0), parent.K); % force to legal states
             child = OuterTotalisticCellularAutomata(child, parent.grid, parent.K); % wrap
         end
