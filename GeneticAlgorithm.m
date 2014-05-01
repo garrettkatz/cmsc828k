@@ -21,13 +21,19 @@ classdef GeneticAlgorithm < handle
        end
        
        % runs the GA and returns the best solution found
-       function best = evolve(ga, max_generations, population_size, crossover_rate, mutation_rate)
+       function [best, maxes, means] = evolve(ga, max_generations, population_size, num_elites, crossover_rate, mutation_rate, debug)
            % Prepare session to run in parallel
            if ga.options{1}
                parpool('local', 2); 
            end
            
+           if nargin < 7
+               debug = false;
+           end
+           
            ga.time = 0;
+           maxes = zeros(max_generations);
+           means = zeros(max_generations);
            
            % initialize population
            for i = 1:population_size
@@ -38,13 +44,31 @@ classdef GeneticAlgorithm < handle
            while ga.time < max_generations
                ga.time = ga.time + 1;
            
+               % calculate fitness
+               fit = evalFitness(ga, population_size);
+               
+               maxes(i) = max(fit);
+               means(i) = mean(fit);
+               
+               if debug
+                   disp(['Generation:  ', num2str(ga.time)]);
+                   disp(['Max fitness: ', num2str(maxes(i))]);
+                   disp(['Avg fitness: ', num2str(means(i))]);
+                   disp(' ');
+               end
+               
+               % get elites
+               [~, idxs] = sort(fit,'descend');
+               elites = ga.population(idxs(1:num_elites));
+               
                % do fitness proportionate selection
-               ga.population = selection(ga, population_size);
+               ga.population = selection(ga, fit, population_size - num_elites);
+               ga.population((population_size - num_elites + 1):population_size) = elites; 
                
                % do crossover
-               for i = 1:population_size
+               for i = 1:(population_size - num_elites)
                   if rand < crossover_rate(i) / 2
-                      r = ceil(rand * population_size);
+                      r = ceil(rand * (population_size - num_elites));
                       [child1, child2] = ga.crossover(ga.population(i), ga.population(r));
                       ga.population(i) = child1;
                       ga.population(r) = child2;
@@ -52,7 +76,7 @@ classdef GeneticAlgorithm < handle
                end
                
                % do mutations
-               for i = 1:population_size
+               for i = 1:(population_size - num_elites)
                   if rand < mutation_rate(i)
                       ga.population(i) = ga.mutate(ga.population(i));
                   end
@@ -84,11 +108,10 @@ classdef GeneticAlgorithm < handle
        end
        
        % creates a fitness proportionate list of parents
-       function parents = selection(ga, num_to_select)
+       function parents = selection(ga, fit, num_to_select)
            parents = ga.make_individual(); % dummy to set class
            
-           % calculate fitness
-           fit = evalFitness(ga, num_to_select);
+           % calculate fitnes
            fit = fit / sum(fit);
            
            % for each survivor

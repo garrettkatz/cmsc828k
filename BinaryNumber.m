@@ -5,8 +5,9 @@ classdef BinaryNumber
     
     methods(Static)
         function ind = create_individual(size)
-            num = rand(size,1) > 0.5;
-            ind = BinaryNumber(num * 1.0);
+            %num = rand(size,1) > 0.5;
+            %ind = BinaryNumber(num * 1.0);
+            ind = BinaryNumber(zeros(size,1));
         end
         
         function fit = fitness(ind)
@@ -54,9 +55,11 @@ classdef BinaryNumber
             
             % run ga
             ga = GeneticAlgorithm(create_individual, fitness, crossover, mutate, options);
-            max_generations = 1000;
+            max_generations = 100;
             population_size = 100;
-            best = ga.evolve(max_generations, population_size, crossover_rate, mutation_rate);
+            num_elites = 10;
+            debug = true;
+            [best, maxes, means] = ga.evolve(max_generations, population_size, num_elites, crossover_rate, mutation_rate, debug);
 
             best.number
 
