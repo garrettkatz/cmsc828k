@@ -17,10 +17,3 @@ function [child1, child2] = crossover(parent1, parent2)
         child2 = [parent2(:,1:col);parent1(:,col+1:cols)];
     end
 end
-
-function child = mutate(parent, mutation_rate)
-    mutations = random(size(parent)) < mutation_rate;
-    signs = sign(rand(size(parent)) - 0.5);
-    amount = floor(abs(normrnd(0,1,size(parent))));
-    child = parent + (mutations * signs * amount);
-end
