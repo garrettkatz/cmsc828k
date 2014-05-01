@@ -27,6 +27,14 @@ classdef BinaryNumber
             child = BinaryNumber(num * 1.0);
         end
         
+        function r = crossover_rate(time)
+            r = 1;
+        end
+        
+        function r = mutation_rate(time)
+            r = 0.1;
+        end
+        
         function runGA()
             % Cleanup variables and figures
             clear;
@@ -40,13 +48,14 @@ classdef BinaryNumber
             fitness = @(population) arrayfun(indvFit, population);
             crossover = @(par1,par2) BinaryNumber.crossover(par1,par2);
             mutate = @(individual) BinaryNumber.mutate(individual, 0.05);
-
+            crossover_rate = @(time) BinaryNumber.crossover_rate(time);
+            mutation_rate = @(time) BinaryNumber.mutation_rate(time);
+            options = {0};
+            
             % run ga
-            ga = GeneticAlgorithm(create_individual, fitness, crossover, mutate);
+            ga = GeneticAlgorithm(create_individual, fitness, crossover, mutate, options);
             max_generations = 1000;
             population_size = 100;
-            crossover_rate = 1;
-            mutation_rate = 0.1;
             best = ga.evolve(max_generations, population_size, crossover_rate, mutation_rate);
 
             best.number
