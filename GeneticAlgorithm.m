@@ -60,6 +60,9 @@ classdef GeneticAlgorithm < handle
                % get elites
                [~, idxs] = sort(fit,'descend');
                elites = ga.population(idxs(1:num_elites));
+               for i = 1:num_elites
+                   elites(i) = elites(i).copy();
+               end
                
                % do fitness proportionate selection
                ga.population = selection(ga, fit, population_size - num_elites);
@@ -126,7 +129,8 @@ classdef GeneticAlgorithm < handle
               end
               
               % throw in survivors vector
-              parents(i) = ga.population(count - 1);
+              %parents(i) = ga.population(count - 1);
+              parents(i) = ga.population(count - 1).copy();
            end
        end
        

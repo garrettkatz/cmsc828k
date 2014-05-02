@@ -116,6 +116,9 @@ classdef OuterTotalisticCellularAutomata < handle
             err = mean(err(:));
             fit = 1/err;
         end
+        function clone = copy(otca)
+            clone = OuterTotalisticCellularAutomata(otca.rule, otca.grid, otca.K);
+        end
     end
     methods(Static = true)
         function grid = makeGrid(dims)
