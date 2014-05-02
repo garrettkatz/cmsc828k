@@ -5,115 +5,107 @@ classdef FullRuleCellularAutomata < handle
     properties
         rule; % Rule table
         neighbors; % N x 5 neihbor indices (including self)
+        K; % number of states
         a; % column vector of unit activations
     end
     methods
-        function frca = FullRuleCellularAutomata(rule, dims)
+        function frca = FullRuleCellularAutomata(rule, neighbors, K)
         % OuterTotalisticCellularAutomata constructs a cellular automata
         % object with the given rule table and dimensions.
         
             if nargin > 0 % check for object array construction
                 frca.rule = rule;
-                frca.neighbors = FullRuleCellularAutomata.makeNeighbors(dims);
-                frca.a = zeros(size(grid,1), 1);
+                frca.neighbors = neighbors;
+                frca.K = K;
+                frca.a = zeros(size(neighbors,1), 1);
             end
             
         end
-        function pulse(otca, x, b)
-        % Pulse updates activations based on input vector x and feedback
-        % vector b.
-
-            K = otca.K;
-            a = otca.a;
-
-            % rescale external signals from R to [0,K]
-            [xi,~,xs] = find(x);
-            xs = K*(tanh(xs)+1)/2;
-            [bi,~,bs] = find(b);
-            bs = K*(tanh(bs)+1)/2;
+        function pulse(frca, x, b)
             
-            % Get neighborhood sum including external signals
-            nsum = otca.grid*a;
-            nsum(xi) = nsum(xi)+xs;
-            nsum(bi) = nsum(bi)+bs;
+            % Localize variables
+            a = frca.a;
+            N = numel(a);
+            rule = frca.rule;
+            neighbors = frca.neighbors;
+            K = frca.K;
+            pows = K.^(0:4)'; % conversion to base K
             
-            % Force to indices
-            nsum = min(max(round(nsum), 0), 6*K);
-
-            % Get linear indices in rule table
-            idx = a + (K+1)*nsum + 1;
-
-            % Apply rule
-            otca.a = otca.rule(idx);
-           
-%             % MEX attempt (buggy)
-%             nsum = otca.grid*otca.a;
-%             new_a = otcapulse(nsum, otca.rule, otca.K, x, b, otca.a);
-%             otca.a = new_a;
+            % Get neighborhood states
+            neighborhood = reshape(a(neighbors(:)),N,5);
+            % Apply rules
+            a = rule(neighborhood*pows+1);
+            % Feedback (Map to node index) for next round
+            a(ceil(N*(tanh(b)+1)/2)) = K-1;
             
+            frca.a = a;
         end
-        function fit = fitness(otca, X, T, tr)
+        function [fit, readOut, Y] = fitness(frca, X, T)
         % Inline fitness evaluation of otcas on mackey-glass
 
             % Localize variables
-            a = zeros(size(otca.a));
+            a = zeros(size(frca.a));
             N = numel(a);
-            grid = otca.grid;
-            rule = otca.rule;
-            K = otca.K;
+            rule = frca.rule;
+            neighbors = frca.neighbors;
+            K = frca.K;
+            pows = K.^(0:4)'; % conversion to base K
+            len = size(T,2);
 
-            % Connections (persistent to avoid confounding factors)
-            persistent readIn;
-            persistent readBack;
-            if isempty(readIn)
-                ext = randperm(N, 20); % indices of external-signal-receiving units
-                readIn = sparse(ext(1:10), 1, 1, N, 1); % 1st 10 for input
-                readBack = sparse(ext(11:20), 1, 1, N, 1); % last 10 for feedback
-            end
-            
             % Generate training data
             % Pre-allocate records
-            A = zeros(N, size(X,2));
+            A = zeros(N, len);
             % Stream inputs
-            for t = 1:size(X,2)
+            for t = 1:len
                 % Record activations
                 A(:,t) = a;
-                % Input and feedback
-                x = readIn*X(:,t);
-                b = readBack*T(:,t);
-                % rescale external signals from reals to [0,K]
-                [xi,~,xs] = find(x);
-                xs = K*(tanh(xs)+1)/2;
-                [bi,~,bs] = find(b);
-                bs = K*(tanh(bs)+1)/2;
-                % Get neighborhood sum including external signals
-                nsum = grid*a;
-                nsum(xi) = nsum(xi)+xs;
-                nsum(bi) = nsum(bi)+bs;
-                % Force to indices
-                nsum = min(max(round(nsum), 0), 6*K);
-                % Get linear indices in rule table
-                idx = a + (K+1)*nsum + 1;
-                % Apply rule
-                a = rule(idx);
+                % Feedback (Map to node index)
+                a(ceil(N*(tanh(T(:,t))+1)/2)) = K-1;
+                % Get neighborhood states
+                neighborhood = reshape(a(neighbors(:)),N,5);
+                % Apply rules
+                a = rule(neighborhood*pows+1);
             end
 
             % Ridge regression on readout
-            A = A(:,tr);
-            T = T(:,tr+1);
-            [U,S,V] = svd(A,'econ');
+            tr = len/4:3*len/4;
+            [U,S,V] = svd(A(:,tr),'econ');
             S = diag(S);
             ridge = 10;
             D = diag(S./(S.^2+ridge));
-            readOut = T*V*D*U';
+            readOut = T(:,tr+1)*V*D*U';
+
+            % Re-stream using read-out
+            Y = zeros(size(T));
+            a(:) = 0;
+            y = 0;
+            for t = 1:len
+                % Record
+                A(:,t) = a;
+                Y(:,t) = y;
+                % Force
+                if t < len/2, y = T(:,t); end;
+                % Feedback
+                a(ceil(N*(tanh(y)+1)/2)) = 1;
+                % Get neighborhood states
+                neighborhood = reshape(a(neighbors(:)),N,5);
+                % Apply rules
+                a = rule(neighborhood*pows+1);
+                % Output
+                y = readOut*A(:,t);
+            end
             
-            % Mean squared training error
-            err = (T - readOut*A).^2;
+            % Mean squared testing error
+            err = (T - Y).^2;
             err = mean(err(:));
             fit = 1/err;
         end
-        function clone = copy(otca)
-            clone = OuterTotalisticCellularAutomata(otca.rule, otca.grid, otca.K);
+        function clone = copy(frca)
+            clone = FullRuleCellularAutomata;
+            clone.rule = frca.rule;
+            clone.neighbors = frca.neighbors;
+            clone.K = frca.K;
+            clone.a = frca.a;
         end
     end
     methods(Static = true)
@@ -125,50 +117,46 @@ classdef FullRuleCellularAutomata < handle
         %   neighbhors: the neighbor matrix
         
             % List (r,c) coordinates for each cell (0-based idx)
-            r = repmat((0:dims(1)-1)',dims(2),1);
-            c = reshape(repmat(0:dims(2)-1, dims(1), 1),[],1);
-        
+            R = dims(1); C = dims(2);
+            r = repmat((0:R-1)',C,1);
+            c = reshape(repmat(0:C-1, R, 1),[],1);
+            % convert neighborhood to linear index
+            neighbors = [...
+                R*c + r,... %self
+                R*mod(c-1,C) + r,... % left
+                R*mod(c+1,C) + r,... % right
+                R*c + mod(r-1,R),... % up
+                R*c + mod(r+1,R) ...  % down
+            ];
+            % 1 based indexing
+            neighbors = neighbors + 1;
+            
         end
-        function otca = random(dims, K)
-        % random constructs a randomized OuterTotalisticCellularAutomata.
+        function frca = random(dims,K)
+        % random constructs a randomized FullRuleCellularAutomata.
         
-            rule = randi(K+1, [K+1, 6*K+1])-1; % 6 to include input/feedback
-            grid = OuterTotalisticCellularAutomata.makeGrid(dims);
-            otca = OuterTotalisticCellularAutomata(rule, grid, K);
+            rule = randi(K, [K^5, 1])-1;
+            neighbors = FullRuleCellularAutomata.makeNeighbors(dims);
+            frca = FullRuleCellularAutomata(rule, neighbors, K);
             
         end
         % Gen ops
         function [child1, child2] = crossover(parent1, parent2)
-            dim = rand < 0.5;
-            dims = size(parent1.rule);
-
-            % horizontal crossover
-            if (dim)
-                rows = dims(1);
-                row = ceil(rand * (rows-1));
-                child1 = [parent1.rule(1:row,:);parent2.rule(row+1:rows,:)];
-                child2 = [parent2.rule(1:row,:);parent1.rule(row+1:rows,:)];
-
-            % vertical crossover
-            else
-                cols = dims(2);
-                col = ceil(rand * (cols-1));
-                child1 = [parent1.rule(:,1:col),parent2.rule(:,col+1:cols)];
-                child2 = [parent2.rule(:,1:col),parent1.rule(:,col+1:cols)];
-            end
+        % Cross-over rule tables, assuming equal K
+            cutpt = randi(parent1.K-1);
+            rule1 = [parent1.rule(1:cutpt); parent2.rule(cutpt+1:end)];
+            rule2 = [parent2.rule(1:cutpt); parent1.rule(cutpt+1:end)];
             
-            % Wrap child rules in otca objects
-            child1 = OuterTotalisticCellularAutomata(child1, parent1.grid, parent1.K);
-            child2 = OuterTotalisticCellularAutomata(child2, parent2.grid, parent2.K);
+            % Wrap child rules in frca objects
+            child1 = FullRuleCellularAutomata(rule1, parent1.neighbors, parent1.K);
+            child2 = FullRuleCellularAutomata(rule2, parent2.neighbors, parent2.K);
             
         end
         function child = mutate(parent, mutation_rate)
+            rule = parent.rule;
             mutations = rand(size(parent.rule)) < mutation_rate;
-            signs = sign(rand(size(parent.rule)) - 0.5);
-            amount = floor(abs(normrnd(0,1,size(parent.rule))));
-            child = parent.rule + (mutations .* signs .* amount);
-            child = min(max(child, 0), parent.K); % force to legal states
-            child = OuterTotalisticCellularAutomata(child, parent.grid, parent.K); % wrap
+            rule(mutations) = randi(parent.K-1, nnz(mutations), 1);
+            child = FullRuleCellularAutomata(rule, parent.neighbors, parent.K); % wrap
         end
     end
 end
