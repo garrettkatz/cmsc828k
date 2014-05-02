@@ -26,23 +26,34 @@ classdef OuterTotalisticCellularAutomata < handle
         function pulse(otca, x, b)
         % Pulse updates activations based on input vector x and feedback
         % vector b.
-        
-            % rescale external signals from [-1,1] to [0,K]
-            x(x>0) = otca.K*(tanh(x(x>0))+1)/2;
-            b(b>0) = otca.K*(tanh(b(b>0))+1)/2;
+
+            K = otca.K;
+            a = otca.a;
+
+            % rescale external signals from R to [0,K]
+            [xi,~,xs] = find(x);
+            xs = K*(tanh(xs)+1)/2;
+            [bi,~,bs] = find(b);
+            bs = K*(tanh(bs)+1)/2;
             
             % Get neighborhood sum including external signals
-            nsum = otca.grid*otca.a + x + b;
+            nsum = otca.grid*a;
+            nsum(xi) = nsum(xi)+xs;
+            nsum(bi) = nsum(bi)+bs;
             
             % Force to indices
-            nsum = min(max(round(nsum), 0), size(otca.rule,2)-1);
+            nsum = min(max(round(nsum), 0), 6*K);
 
             % Get linear indices in rule table
-            %idx = sub2ind(size(otca.rule), otca.a+1, nsum + 1);
-            idx = [otca.a + 1, nsum + 1]*[1; otca.K+1] - (otca.K + 1); % faster
+            idx = a + (K+1)*nsum + 1;
 
             % Apply rule
             otca.a = otca.rule(idx);
+           
+%             % MEX attempt (buggy)
+%             nsum = otca.grid*otca.a;
+%             new_a = otcapulse(nsum, otca.rule, otca.K, x, b, otca.a);
+%             otca.a = new_a;
             
         end
     end

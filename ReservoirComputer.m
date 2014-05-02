@@ -2,7 +2,7 @@ classdef ReservoirComputer < handle
 % A reservoir computer object is a wrapper which stores a handle to a
 % reservoir and takes care of training.  A reservoir can be any object
 % which satisfies the following contract:
-%   -It has a field 'a'which is a column vector of unit activations
+%   -It has a field 'a' which is a column vector of unit activations
 %   -It has a method with the signature 'pulse(x,y)' which updates the
 %    activations based on input vector x and feedback vector y.
     properties
@@ -45,6 +45,7 @@ classdef ReservoirComputer < handle
             A = zeros(size(rc.reservoir.a,1), size(X,2));
             Y = zeros(size(rc.readOut,1), size(X,2));
             % Stream inputs
+            res = rc.reservoir;
             for t = 1:size(X,2)
                 % Record activations
                 A(:,t) = rc.reservoir.a;
@@ -54,7 +55,8 @@ classdef ReservoirComputer < handle
                 % Update
                 x = rc.readIn*X(:,t);
                 b = rc.readBack*rc.y;
-                rc.reservoir.pulse(x, b);
+                pulse(res, x, b);
+
                 rc.y = rc.readOut*A(:,t);
             end
             

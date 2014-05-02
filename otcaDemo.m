@@ -54,21 +54,23 @@ t = 2001:4000;
 [A(:,t),Y(:,t)] = rc.stream(X(:,t));
 
 % Plot the results, play movie of cellular automata
-mx = max(A(:));
-for t = 1:10:size(A,2)
-    subplot(3,1,1);
-    plot(1:size(A,2),T,'b',1:size(A,2),Y,'r',[t t],[-1 1],'k');
-    title('target output vs actual');
-    legend('target','actual');
-    xlabel('time');
-    ylabel('output activation');
-    subplot(3,1,2);
-    plot(1:size(A,2),A',[t t],[0 mx],'k');
-    title('reservoir (plot)')
-    xlabel('time');
-    ylabel('unit activation');
-    subplot(3,1,3);
-    imshow(reshape(A(:,t),[dims(1),prod(dims(2:end))])/mx);
-    title('reservoir over time (brightness = activation)')
-    pause(1/48); % ~seconds per frame
+if false
+    mx = max(A(:));
+    for t = 1:10:size(A,2)
+        subplot(3,1,1);
+        plot(1:size(A,2),T,'b',1:size(A,2),Y,'r',[t t],[-1 1],'k');
+        title('target output vs actual');
+        legend('target','actual');
+        xlabel('time');
+        ylabel('output activation');
+        subplot(3,1,2);
+        plot(1:size(A,2),A',[t t],[0 mx],'k');
+        title('reservoir (plot)')
+        xlabel('time');
+        ylabel('unit activation');
+        subplot(3,1,3);
+        imshow(reshape(A(:,t),[dims(1),prod(dims(2:end))])/mx);
+        title('reservoir over time (brightness = activation)')
+        pause(1/48); % ~seconds per frame
+    end
 end

@@ -10,7 +10,8 @@ indvFit = @(individual) Fitness.evalOtca(individual, Xsp, Tsp);
 dims = [20 20]; % grid dimensions
 K = 256;
 % list of options {Parallel, ...}
-options = {true}; 
+% options = {true}; 
+options = {false}; 
 
 % initialize function handles for ga
 make_individual = @() OuterTotalisticCellularAutomata.random(dims,K);
@@ -21,10 +22,12 @@ mutate = @(individual) OuterTotalisticCellularAutomata.mutate(individual, 0.1);
 ga = GeneticAlgorithm(make_individual, indvFit, crossover, mutate, options);
 max_generations = 2;
 population_size = 2;
+num_elites = 1;
 crossover_rate = 1;
 mutation_rate = 0.1;
 tic
-best = ga.evolve(max_generations, population_size, crossover_rate, mutation_rate);
+%best = ga.evolve(max_generations, population_size, crossover_rate, mutation_rate);
+[best, maxes, means] = ga.evolve(max_generations, population_size, num_elites, crossover_rate, mutation_rate);
 toc
 
 % evaluate best's performance on mackey-glass
