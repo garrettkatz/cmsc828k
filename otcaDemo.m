@@ -41,7 +41,8 @@ rc = ReservoirComputer(otca, readIn, readOut, readBack);
 
 % Train on the Mackey glass data (only regress on middle 2000)
 t = 1000:3000;
-rc.train(X, T, t, 10);
+err = rc.train(X, T, t, 10);
+1/err
 
 % Reset the reservoir to zero activations and stream the first 2000 time
 % steps with "teacher forcing" (target output is used for feedback)

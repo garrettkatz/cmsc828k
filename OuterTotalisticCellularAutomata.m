@@ -56,6 +56,66 @@ classdef OuterTotalisticCellularAutomata < handle
 %             otca.a = new_a;
             
         end
+        function fit = fitness(otca, X, T, tr)
+        % Inline fitness evaluation of otcas on mackey-glass
+
+            % Localize variables
+            a = zeros(size(otca.a));
+            N = numel(a);
+            grid = otca.grid;
+            rule = otca.rule;
+            K = otca.K;
+
+            % Connections (persistent to avoid confounding factors)
+            persistent readIn;
+            persistent readBack;
+            if isempty(readIn)
+                ext = randperm(N, 20); % indices of external-signal-receiving units
+                readIn = sparse(ext(1:10), 1, 1, N, 1); % 1st 10 for input
+                readBack = sparse(ext(11:20), 1, 1, N, 1); % last 10 for feedback
+            end
+            
+            % Generate training data
+            % Pre-allocate records
+            A = zeros(N, size(X,2));
+            % Stream inputs
+            for t = 1:size(X,2)
+                % Record activations
+                A(:,t) = a;
+                % Input and feedback
+                x = readIn*X(:,t);
+                b = readBack*T(:,t);
+                % rescale external signals from reals to [0,K]
+                [xi,~,xs] = find(x);
+                xs = K*(tanh(xs)+1)/2;
+                [bi,~,bs] = find(b);
+                bs = K*(tanh(bs)+1)/2;
+                % Get neighborhood sum including external signals
+                nsum = grid*a;
+                nsum(xi) = nsum(xi)+xs;
+                nsum(bi) = nsum(bi)+bs;
+                % Force to indices
+                nsum = min(max(round(nsum), 0), 6*K);
+                % Get linear indices in rule table
+                idx = a + (K+1)*nsum + 1;
+                % Apply rule
+                a = rule(idx);
+            end
+
+            % Ridge regression on readout
+            A = A(:,tr);
+            T = T(:,tr+1);
+            [U,S,V] = svd(A,'econ');
+            S = diag(S);
+            ridge = 10;
+            D = diag(S./(S.^2+ridge));
+            readOut = T*V*D*U';
+            
+            % Mean squared training error
+            err = (T - readOut*A).^2;
+            err = mean(err(:));
+            fit = 1/err;
+        end
     end
     methods(Static = true)
         function grid = makeGrid(dims)
