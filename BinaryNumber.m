@@ -64,6 +64,10 @@ classdef BinaryNumber
             best.number
 
             BinaryNumber.fitness(best)
+            
+            maxes 
+            
+            means
         end
     end
     

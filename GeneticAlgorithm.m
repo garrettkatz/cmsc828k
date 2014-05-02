@@ -32,8 +32,8 @@ classdef GeneticAlgorithm < handle
            end
            
            ga.time = 0;
-           maxes = zeros(max_generations);
-           means = zeros(max_generations);
+           maxes = zeros(max_generations,1);
+           means = zeros(max_generations,1);
            
            % initialize population
            for i = 1:population_size
@@ -47,13 +47,13 @@ classdef GeneticAlgorithm < handle
                % calculate fitness
                fit = evalFitness(ga, population_size);
                
-               maxes(i) = max(fit);
-               means(i) = mean(fit);
+               maxes(ga.time) = max(fit);
+               means(ga.time) = mean(fit);
                
                if debug
                    disp(['Generation:  ', num2str(ga.time)]);
-                   disp(['Max fitness: ', num2str(maxes(i))]);
-                   disp(['Avg fitness: ', num2str(means(i))]);
+                   disp(['Max fitness: ', num2str(maxes(ga.time))]);
+                   disp(['Avg fitness: ', num2str(means(ga.time))]);
                    disp(' ');
                end
                
