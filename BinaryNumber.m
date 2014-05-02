@@ -71,5 +71,9 @@ classdef BinaryNumber
         function bn = BinaryNumber(num)
             bn.number = num;
         end
+        
+        function clone = copy(bn)
+           clone = BinaryNumber(bn.number);
+        end
     end
 end
