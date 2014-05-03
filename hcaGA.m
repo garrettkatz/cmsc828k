@@ -8,23 +8,20 @@ T = T(10001:10:end); % subsample
 T = tanh(T-1); % squash into (-1,1)
 X = 0.2*ones(size(T)); % constant bias
 
-% Load speech data for individual fitness evaluation
-load SpeechData.mat % loads inputs Xsp and targets Tsp
-%indvFit = @(individual) Fitness.evalOtca(individual, Xsp, Tsp);
+% Individual fitness evaluation
 indvFit = @(individual) individual.fitness(X, T);
 
-% Use otcas with a 20 by 20 grid and 256 states
-dims = [20 20]; % grid dimensions
-K = 256;
+% Use a 4 x 128 grid and 4 states
+dims = [4 128]; % grid dimensions
+K = 4;
+
 % list of options {Parallel, ...}
-% options = {true}; 
 options = {false}; 
 
 % initialize function handles for ga
-%make_individual = @() OuterTotalisticCellularAutomata.random(dims,K);
-make_individual = @() OuterTotalisticCellularAutomata.smooth(dims,K);
-crossover = @(par1,par2) OuterTotalisticCellularAutomata.crossover(par1,par2);
-mutate = @(individual, rate) OuterTotalisticCellularAutomata.mutate(individual, rate);
+make_individual = @() HeterogeneousCellularAutomata.random(dims,K);
+crossover = @(par1,par2) HeterogeneousCellularAutomata.crossover(par1,par2);
+mutate = @(individual, rate) HeterogeneousCellularAutomata.mutate(individual, rate);
 
 % run ga
 ga = GeneticAlgorithm(make_individual, indvFit, crossover, mutate, options);
@@ -32,7 +29,7 @@ max_generations = 5;
 population_size = 5;
 num_elites = 1;
 crossover_rate = @(t) 1;
-mutation_rate = @(t) 0.5^t;
+mutation_rate = @(t) 0.95^t;
 tic
 %best = ga.evolve(max_generations, population_size, crossover_rate, mutation_rate);
 [best, maxes, means] = ga.evolve(max_generations, population_size, num_elites, crossover_rate, mutation_rate,true);

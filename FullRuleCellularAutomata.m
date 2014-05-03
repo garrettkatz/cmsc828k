@@ -1,10 +1,12 @@
 classdef FullRuleCellularAutomata < handle
 % A FullRuleCellularAutomata object stores the full rule table for every
 % possible neighborhood configuration.  Assumes 5-neighborhood, 2d CA with
-% periodic boundaries and binary states.
+% periodic boundaries and binary states.  The i^th neighborhood
+% configuration is the base-K number
+%       i = K^4*self + K^3*left + K^2*right + K*up + down
     properties
-        rule; % Rule table
-        neighbors; % N x 5 neihbor indices (including self)
+        rule; % rule(i) is the new state for i^th neighborhood configuration
+        neighbors; % N x 5 neighbor indices (including self)
         K; % number of states
         a; % column vector of unit activations
     end

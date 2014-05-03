@@ -9,17 +9,30 @@ classdef OuterTotalisticCellularAutomata < handle
         grid; % Grid adjacency matrix
         K; % Number of states (excluding quiescent state zero)
         a; % Column vector of unit activations
+        readIn; readBack; readOut; % reservoir matrices
     end
     methods
         function otca = OuterTotalisticCellularAutomata(rule, grid, K)
         % OuterTotalisticCellularAutomata constructs a cellular automata
         % object with the given rule, grid, and number of states.
         
+            % Connections (persistent to avoid confounding factors)
+            persistent readIn;
+            persistent readBack;
+            if isempty(readIn)
+                N = size(grid,1);
+                ext = randperm(N, 20); % indices of external-signal-receiving units
+                readIn = sparse(ext(1:10), 1, 1, N, 1); % 1st 10 for input
+                readBack = sparse(ext(11:20), 1, 1, N, 1); % last 10 for feedback
+            end
+        
             if nargin > 0 % check for object array construction
                 otca.rule = rule;
                 otca.grid = grid;
                 otca.K = K;
                 otca.a = zeros(size(grid,1), 1);
+                otca.readIn = readIn;
+                otca.readBack = readBack;
             end
             
         end
@@ -56,7 +69,7 @@ classdef OuterTotalisticCellularAutomata < handle
 %             otca.a = new_a;
             
         end
-        function fit = fitness(otca, X, T, tr)
+        function [fit, Y] = fitness(otca, X, T)
         % Inline fitness evaluation of otcas on mackey-glass
 
             % Localize variables
@@ -65,15 +78,9 @@ classdef OuterTotalisticCellularAutomata < handle
             grid = otca.grid;
             rule = otca.rule;
             K = otca.K;
-
-            % Connections (persistent to avoid confounding factors)
-            persistent readIn;
-            persistent readBack;
-            if isempty(readIn)
-                ext = randperm(N, 20); % indices of external-signal-receiving units
-                readIn = sparse(ext(1:10), 1, 1, N, 1); % 1st 10 for input
-                readBack = sparse(ext(11:20), 1, 1, N, 1); % last 10 for feedback
-            end
+            len = size(T,2);
+            readIn = otca.readIn;
+            readBack = otca.readBack;
             
             % Generate training data
             % Pre-allocate records
@@ -103,21 +110,121 @@ classdef OuterTotalisticCellularAutomata < handle
             end
 
             % Ridge regression on readout
-            A = A(:,tr);
-            T = T(:,tr+1);
-            [U,S,V] = svd(A,'econ');
+            tr = len/4:3*len/4;
+            [U,S,V] = svd(A(:,tr),'econ');
             S = diag(S);
             ridge = 10;
             D = diag(S./(S.^2+ridge));
-            readOut = T*V*D*U';
+            readOut = T(:,tr+1)*V*D*U';
+
+            % Re-stream using read-out
+            Y = zeros(size(T));
+            a(:) = 0;
+            y = 0;
+            for t = 1:len
+                % Record
+                A(:,t) = a;
+                Y(:,t) = y;
+                % Force
+                if t < len/2, y = T(:,t); end;
+                % Input and feedback
+                x = readIn*X(:,t);
+                b = readBack*y;
+                % rescale external signals from reals to [0,K]
+                [xi,~,xs] = find(x);
+                xs = K*(tanh(xs)+1)/2;
+                [bi,~,bs] = find(b);
+                bs = K*(tanh(bs)+1)/2;
+                % Get neighborhood sum including external signals
+                nsum = grid*a;
+                nsum(xi) = nsum(xi)+xs;
+                nsum(bi) = nsum(bi)+bs;
+                % Force to indices
+                nsum = min(max(round(nsum), 0), 6*K);
+                % Get linear indices in rule table
+                idx = a + (K+1)*nsum + 1;
+                % Apply rule
+                a = rule(idx);
+                % Output
+                y = readOut*A(:,t);
+            end
             
-            % Mean squared training error
-            err = (T - readOut*A).^2;
+            % Save readOut
+            otca.readOut = readOut;
+            
+            % Mean squared testing error
+            err = (T - Y).^2;
             err = mean(err(:));
             fit = 1/err;
+            
         end
         function clone = copy(otca)
             clone = OuterTotalisticCellularAutomata(otca.rule, otca.grid, otca.K);
+        end
+        function check(otca, X, T, dims, step, framerate)
+        % check visualizes performance on Mackey-glass
+            
+            % Localize variables
+            a = zeros(size(otca.a));
+            N = numel(a);
+            grid = otca.grid;
+            rule = otca.rule;
+            K = otca.K;
+            len = size(T,2);
+            readIn = otca.readIn;
+            readBack = otca.readBack;
+            readOut = otca.readOut;
+            
+            % Re-stream using read-out
+            Y = zeros(size(T));
+            a(:) = 0;
+            y = 0;
+            for t = 1:len
+                % Record
+                A(:,t) = a;
+                Y(:,t) = y;
+                % Force
+                if t < len/2, y = T(:,t); end;
+                % Input and feedback
+                x = readIn*X(:,t);
+                b = readBack*y;
+                % rescale external signals from reals to [0,K]
+                [xi,~,xs] = find(x);
+                xs = K*(tanh(xs)+1)/2;
+                [bi,~,bs] = find(b);
+                bs = K*(tanh(bs)+1)/2;
+                % Get neighborhood sum including external signals
+                nsum = grid*a;
+                nsum(xi) = nsum(xi)+xs;
+                nsum(bi) = nsum(bi)+bs;
+                % Force to indices
+                nsum = min(max(round(nsum), 0), 6*K);
+                % Get linear indices in rule table
+                idx = a + (K+1)*nsum + 1;
+                % Apply rule
+                a = rule(idx);
+                % Output
+                y = readOut*A(:,t);
+            end
+
+            mx = max(A(:));
+            for t = 1:step:size(A,2)
+                subplot(3,1,1);
+                plot(1:size(A,2),T,'b',1:size(A,2),Y,'r',[t t],[-1 1],'k');
+                title('target output vs actual');
+                legend('target','actual');
+                xlabel('time');
+                ylabel('output activation');
+                subplot(3,1,2);
+                plot(1:size(A,2),A',[t t],[0 mx],'k');
+                title('reservoir (plot)')
+                xlabel('time');
+                ylabel('unit activation');
+                subplot(3,1,3);
+                imshow(reshape(A(:,t),[dims(1),prod(dims(2:end))])/mx);
+                title('reservoir over time (brightness = activation)')
+                pause(framerate); % ~seconds per frame
+            end
         end
     end
     methods(Static = true)
@@ -157,6 +264,20 @@ classdef OuterTotalisticCellularAutomata < handle
             grid = OuterTotalisticCellularAutomata.makeGrid(dims);
             otca = OuterTotalisticCellularAutomata(rule, grid, K);
             
+        end
+        function otca = smooth(dims, K)
+        % smooth constructs a smooth-rule OuterTotalisticCellularAutomata.
+        
+            rule = randi(K+1, [K+1, 6*K+1])-1; % 6 to include input/feedback
+            grid = OuterTotalisticCellularAutomata.makeGrid(dims);
+            otca = OuterTotalisticCellularAutomata(rule, grid, K);
+            
+            % Change rule to "move toward neighborhood average"
+            states = repmat((0:K)', 1, 6*K+1); % 6 to include input/feedback
+            sums = repmat(0:6*K, K+1, 1);
+            rule = states - (states > (states+sums)/5) + (states < (states+sums)/5);
+            otca.rule = min(rule,K);
+
         end
         % Gen ops
         function [child1, child2] = crossover(parent1, parent2)
