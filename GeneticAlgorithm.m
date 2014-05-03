@@ -21,10 +21,11 @@ classdef GeneticAlgorithm < handle
        end
        
        % runs the GA and returns the best solution found
-       function [best, maxes, means] = evolve(ga, max_generations, population_size, num_elites, crossover_rate, mutation_rate, debug)
+       %function [best, maxes, means] = evolve(ga, max_generations, population_size, num_elites, crossover_rate, mutation_rate, debug)
+       function [best, fvals] = evolve(ga, max_generations, population_size, num_elites, crossover_rate, mutation_rate, debug)
            % Prepare session to run in parallel
            if ga.options{1}
-               parpool('local', 2); 
+               parpool('local', [2 10]); 
            end
            
            if nargin < 7
@@ -32,8 +33,9 @@ classdef GeneticAlgorithm < handle
            end
            
            ga.time = 0;
-           maxes = zeros(max_generations,1);
-           means = zeros(max_generations,1);
+           fvals = zeros(max_generations, population_size);
+           %maxes = zeros(max_generations,1);
+           %means = zeros(max_generations,1);
            
            % initialize population
            for i = 1:population_size
@@ -45,15 +47,19 @@ classdef GeneticAlgorithm < handle
                ga.time = ga.time + 1;
            
                % calculate fitness
+               tfit = tic;
                fit = evalFitness(ga, population_size);
+               fit_time = toc(tfit);
                
-               maxes(ga.time) = max(fit);
-               means(ga.time) = mean(fit);
+               fvals(ga.time, :) = fit';
+               %maxes(ga.time) = max(fit);
+               %means(ga.time) = mean(fit);
                
                if debug
-                   disp(['Generation:  ', num2str(ga.time)]);
-                   disp(['Max fitness: ', num2str(maxes(ga.time))]);
-                   disp(['Avg fitness: ', num2str(means(ga.time))]);
+                   disp(['Generation:  ', num2str(ga.time)])
+                   disp(['Max fitness: ', num2str(max(fvals(ga.time,:)))])
+                   disp(['Avg fitness: ', num2str(mean(fvals(ga.time,:)))])
+                   disp(['Eval time: ', num2str(fit_time)])
                    disp(' ');
                end
                
@@ -98,6 +104,7 @@ classdef GeneticAlgorithm < handle
        function fit = evalFitness(ga, population_size)
            pop = ga.population;
            if ga.options{1} % parallel
+               fit = zeros(population_size, 1);
                indvFit = @(in) ga.fitness(in);
                parfor i = 1:population_size
                     fit(i) = indvFit(pop(i));

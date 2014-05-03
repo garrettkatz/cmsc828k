@@ -18,7 +18,7 @@ dims = [20 20]; % grid dimensions
 K = 256;
 % list of options {Parallel, ...}
 % options = {true}; 
-options = {false}; 
+options = {true}; 
 
 % initialize function handles for ga
 %make_individual = @() OuterTotalisticCellularAutomata.random(dims,K);
@@ -28,14 +28,17 @@ mutate = @(individual, rate) OuterTotalisticCellularAutomata.mutate(individual, 
 
 % run ga
 ga = GeneticAlgorithm(make_individual, indvFit, crossover, mutate, options);
-max_generations = 5;
-population_size = 5;
-num_elites = 1;
-crossover_rate = @(t) 1;
-mutation_rate = @(t) 0.5^t;
+max_generations = 10;
+population_size = 50;
+num_elites = 5;
+crossover_rate = @(t) 0.8;
+mutation_rate = @(t) 0.1*exp(-t/50);
 tic
+
+disp('Starting evolution...')
+[best, fvals] = ga.evolve(max_generations, population_size, num_elites, crossover_rate, mutation_rate,true);
 %best = ga.evolve(max_generations, population_size, crossover_rate, mutation_rate);
-[best, maxes, means] = ga.evolve(max_generations, population_size, num_elites, crossover_rate, mutation_rate,true);
+%[best, maxes, means] = ga.evolve(max_generations, population_size, num_elites, crossover_rate, mutation_rate,true);
 toc
 
 % evaluate best's performance on mackey-glass
