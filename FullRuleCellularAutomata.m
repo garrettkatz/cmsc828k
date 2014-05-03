@@ -9,6 +9,7 @@ classdef FullRuleCellularAutomata < handle
         neighbors; % N x 5 neighbor indices (including self)
         K; % number of states
         a; % column vector of unit activations
+        readOut;
     end
     methods
         function frca = FullRuleCellularAutomata(rule, neighbors, K)
@@ -42,7 +43,7 @@ classdef FullRuleCellularAutomata < handle
             
             frca.a = a;
         end
-        function [fit, readOut, Y] = fitness(frca, X, T)
+        function [fit, Y] = fitness(frca, X, T)
         % Inline fitness evaluation of otcas on mackey-glass
 
             % Localize variables
@@ -97,6 +98,9 @@ classdef FullRuleCellularAutomata < handle
                 y = readOut*A(:,t);
             end
             
+            % Save readout
+            frca.readOut = readOut;
+            
             % Mean squared testing error
             err = (T - Y).^2;
             err = mean(err(:));
@@ -109,6 +113,59 @@ classdef FullRuleCellularAutomata < handle
             clone.K = frca.K;
             clone.a = frca.a;
         end
+        function check(frca, X, T, dims, step, framerate)
+        % check visualizes performance on Mackey-glass
+        
+             % Localize variables
+            a = zeros(size(frca.a));
+            N = numel(a);
+            rule = frca.rule;
+            neighbors = frca.neighbors;
+            K = frca.K;
+            pows = K.^(0:4)'; % conversion to base K
+            len = size(T,2);
+            readOut = frca.readOut;
+            
+            % Re-stream using read-out
+            Y = zeros(size(T));
+            a(:) = 0;
+            y = 0;
+            for t = 1:len
+                % Record
+                A(:,t) = a;
+                Y(:,t) = y;
+                % Force
+                if t < len/2, y = T(:,t); end;
+                % Feedback
+                a(ceil(N*(tanh(y)+1)/2)) = 1;
+                % Get neighborhood states
+                neighborhood = reshape(a(neighbors(:)),N,5);
+                % Apply rules
+                a = rule(neighborhood*pows+1);
+                % Output
+                y = readOut*A(:,t);
+            end
+            
+            mx = max(A(:));
+            for t = 1:step:size(A,2)
+                subplot(3,1,1);
+                plot(1:size(A,2),T,'b',1:size(A,2),Y,'r',[t t],[-1 1],'k');
+                title('target output vs actual');
+                legend('target','actual');
+                xlabel('time');
+                ylabel('output activation');
+                subplot(3,1,2);
+                plot(1:size(A,2),A',[t t],[0 mx],'k');
+                title('reservoir (plot)')
+                xlabel('time');
+                ylabel('unit activation');
+                subplot(3,1,3);
+                imshow(reshape(A(:,t),[dims(1),prod(dims(2:end))])/mx);
+                title('reservoir over time (brightness = activation)')
+                pause(framerate); % ~seconds per frame
+            end
+        end
+
     end
     methods(Static = true)
         function neighbors = makeNeighbors(dims)
@@ -134,13 +191,16 @@ classdef FullRuleCellularAutomata < handle
             neighbors = neighbors + 1;
             
         end
-        function frca = random(dims,K)
+        function frca = random(dims,K,lambda)
         % random constructs a randomized FullRuleCellularAutomata.
         
             rule = randi(K, [K^5, 1])-1;
             neighbors = FullRuleCellularAutomata.makeNeighbors(dims);
             frca = FullRuleCellularAutomata(rule, neighbors, K);
-            
+            frca.rule(1) = 0; % quiescent stays quiescent
+            % Control lambda
+            frca.rule(rand(size(frca.rule)) > lambda) = 0;
+
         end
         % Gen ops
         function [child1, child2] = crossover(parent1, parent2)

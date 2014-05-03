@@ -19,7 +19,8 @@ K = 4;
 options = {false}; 
 
 % initialize function handles for ga
-make_individual = @() HeterogeneousCellularAutomata.random(dims,K);
+lambda = 0.3;
+make_individual = @() HeterogeneousCellularAutomata.random(dims,K,lambda);
 crossover = @(par1,par2) HeterogeneousCellularAutomata.crossover(par1,par2);
 mutate = @(individual, rate) HeterogeneousCellularAutomata.mutate(individual, rate);
 

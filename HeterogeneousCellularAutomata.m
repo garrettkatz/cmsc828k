@@ -6,6 +6,7 @@ classdef HeterogeneousCellularAutomata < handle
         neighbors; % N x 5 neighbor indices (including self)
         K; % number of states
         a; % column vector of unit activations
+        readOut; % readout connections
     end
     methods
         function hca = HeterogeneousCellularAutomata(rules, neighbors, K)
@@ -39,7 +40,7 @@ classdef HeterogeneousCellularAutomata < handle
             a = rules(idx);
             hca.a = a;
         end
-        function [fit, readOut, Y] = fitness(hca, X, T)
+        function [fit, Y] = fitness(hca, X, T)
         % Inline fitness evaluation of otcas on mackey-glass
 
             % Localize variables
@@ -96,6 +97,9 @@ classdef HeterogeneousCellularAutomata < handle
                 y = readOut*A(:,t); % Y(:,t+1) = fun( A(:,t) )
             end
             
+            % Save readout
+            hca.readOut = readOut;
+            
             % Mean squared testing error
             err = (T - Y).^2;
             err = mean(err(:));
@@ -107,6 +111,59 @@ classdef HeterogeneousCellularAutomata < handle
             clone.neighbors = hca.neighbors;
             clone.K = hca.K;
             clone.a = hca.a;
+        end
+        function check(hca, X, T, dims, step, framerate)
+        % check visualizes performance on Mackey-glass
+        
+            % Localize variables
+            a = zeros(size(hca.a));
+            N = numel(a);
+            rules = hca.rules;
+            neighbors = hca.neighbors;
+            K = hca.K;
+            pows = K.^(0:4)'; % conversion to base K
+            len = size(T,2);
+            readOut = hca.readOut;
+
+            % Re-stream using read-out
+            Y = zeros(size(T));
+            a(:) = 0;
+            y = 0;
+            for t = 1:len
+                % Record
+                A(:,t) = a;
+                Y(:,t) = y;
+                % Force
+                if t < len/2, y = T(:,t); end;
+                % Feedback (Map to node index) for next round
+                a(ceil(N*(tanh(y)+1)/2)) = K-1;
+                % Get neighborhood states
+                neighborhoods = reshape(a(neighbors(:)),N,5);
+                % Apply rules
+                idx = neighborhoods*pows + (K^5)*(0:numel(a)-1)' + 1; 
+                a = rules(idx); % A(:,t+1) = fun( A(:,t), T(:,t) )
+                % Output
+                y = readOut*A(:,t); % Y(:,t+1) = fun( A(:,t) )
+            end
+            
+            mx = max(A(:));
+            for t = 1:step:size(A,2)
+                subplot(3,1,1);
+                plot(1:size(A,2),T,'b',1:size(A,2),Y,'r',[t t],[-1 1],'k');
+                title('target output vs actual');
+                legend('target','actual');
+                xlabel('time');
+                ylabel('output activation');
+                subplot(3,1,2);
+                plot(1:size(A,2),A',[t t],[0 mx],'k');
+                title('reservoir (plot)')
+                xlabel('time');
+                ylabel('unit activation');
+                subplot(3,1,3);
+                imshow(reshape(A(:,t),[dims(1),prod(dims(2:end))])/mx);
+                title('reservoir over time (brightness = activation)')
+                pause(framerate); % ~seconds per frame
+            end
         end
     end
     methods(Static = true)
@@ -133,13 +190,16 @@ classdef HeterogeneousCellularAutomata < handle
             neighbors = neighbors + 1;
             
         end
-        function hca = random(dims, K)
+        function hca = random(dims, K, lambda)
         % random constructs a randomized HeterogeneousCellularAutomata.
         
             rules = randi(K, [K^5, prod(dims)])-1;
             neighbors = HeterogeneousCellularAutomata.makeNeighbors(dims);
             hca = HeterogeneousCellularAutomata(rules, neighbors, K);
-            
+            hca.rules(1,:) = 0; % quiescent stays quiescent
+            % Control lambda
+            hca.rules(rand(size(hca.rules)) > lambda) = 0;
+
         end
         % Gen ops
         function [child1, child2] = crossover(parent1, parent2)

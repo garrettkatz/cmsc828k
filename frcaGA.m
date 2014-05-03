@@ -20,15 +20,16 @@ K = 4;
 options = {false}; 
 
 % initialize function handles for ga
-make_individual = @() FullRuleCellularAutomata.random(dims,K);
+lambda = 0.3;
+make_individual = @() FullRuleCellularAutomata.random(dims,K,lambda);
 crossover = @(par1,par2) FullRuleCellularAutomata.crossover(par1,par2);
 mutate = @(individual, rate) FullRuleCellularAutomata.mutate(individual, rate);
 
 % run ga
 ga = GeneticAlgorithm(make_individual, indvFit, crossover, mutate, options);
-max_generations = 80;
-population_size = 40;
-num_elites = 5;
+max_generations = 5;
+population_size = 5;
+num_elites = 1;
 crossover_rate = @(t) 1;
 mutation_rate = @(t) 0.95^t;
 tic
