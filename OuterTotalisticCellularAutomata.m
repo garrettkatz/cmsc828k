@@ -10,9 +10,10 @@ classdef OuterTotalisticCellularAutomata < handle
         K; % Number of states (excluding quiescent state zero)
         a; % Column vector of unit activations
         readIn; readBack; readOut; % reservoir matrices
+        cts; % continuity parameter
     end
     methods
-        function otca = OuterTotalisticCellularAutomata(rule, grid, K)
+        function otca = OuterTotalisticCellularAutomata(rule, grid, K, cts)
         % OuterTotalisticCellularAutomata constructs a cellular automata
         % object with the given rule, grid, and number of states.
         
@@ -33,6 +34,8 @@ classdef OuterTotalisticCellularAutomata < handle
                 otca.a = zeros(size(grid,1), 1);
                 otca.readIn = readIn;
                 otca.readBack = readBack;
+                if nargin < 4, cts = 0; end;
+                otca.cts = cts;
             end
             
         end
@@ -42,6 +45,7 @@ classdef OuterTotalisticCellularAutomata < handle
 
             K = otca.K;
             a = otca.a;
+            cts = otca.cts;
 
             % rescale external signals from R to [0,K]
             [xi,~,xs] = find(x);
@@ -58,10 +62,10 @@ classdef OuterTotalisticCellularAutomata < handle
             nsum = min(max(round(nsum), 0), 6*K);
 
             % Get linear indices in rule table
-            idx = a + (K+1)*nsum + 1;
+            idx = round(a) + (K+1)*nsum + 1;
 
             % Apply rule
-            otca.a = otca.rule(idx);
+            otca.a = cts*a + (1-cts)*otca.rule(idx);
            
 %             % MEX attempt (buggy)
 %             nsum = otca.grid*otca.a;
@@ -81,6 +85,7 @@ classdef OuterTotalisticCellularAutomata < handle
             len = size(T,2);
             readIn = otca.readIn;
             readBack = otca.readBack;
+            cts = otca.cts;
             
             % Generate training data
             % Pre-allocate records
@@ -104,9 +109,9 @@ classdef OuterTotalisticCellularAutomata < handle
                 % Force to indices
                 nsum = min(max(round(nsum), 0), 6*K);
                 % Get linear indices in rule table
-                idx = a + (K+1)*nsum + 1;
+                idx = round(a) + (K+1)*nsum + 1;
                 % Apply rule
-                a = rule(idx);
+                a = cts*a + (1-cts)*rule(idx);
             end
 
             % Ridge regression on readout
@@ -142,9 +147,9 @@ classdef OuterTotalisticCellularAutomata < handle
                 % Force to indices
                 nsum = min(max(round(nsum), 0), 6*K);
                 % Get linear indices in rule table
-                idx = a + (K+1)*nsum + 1;
+                idx = round(a) + (K+1)*nsum + 1;
                 % Apply rule
-                a = rule(idx);
+                a = cts*a + (1-cts)*rule(idx);
                 % Output
                 y = readOut*A(:,t);
             end
@@ -159,7 +164,7 @@ classdef OuterTotalisticCellularAutomata < handle
             
         end
         function clone = copy(otca)
-            clone = OuterTotalisticCellularAutomata(otca.rule, otca.grid, otca.K);
+            clone = OuterTotalisticCellularAutomata(otca.rule, otca.grid, otca.K, otca.cts);
         end
         function check(otca, X, T, dims, step, framerate)
         % check visualizes performance on Mackey-glass
@@ -174,6 +179,7 @@ classdef OuterTotalisticCellularAutomata < handle
             readIn = otca.readIn;
             readBack = otca.readBack;
             readOut = otca.readOut;
+            cts = otca.cts;
             
             % Re-stream using read-out
             Y = zeros(size(T));
@@ -200,9 +206,9 @@ classdef OuterTotalisticCellularAutomata < handle
                 % Force to indices
                 nsum = min(max(round(nsum), 0), 6*K);
                 % Get linear indices in rule table
-                idx = a + (K+1)*nsum + 1;
+                idx = round(a) + (K+1)*nsum + 1;
                 % Apply rule
-                a = rule(idx);
+                a = cts*a + (1-cts)*rule(idx);
                 % Output
                 y = readOut*A(:,t);
             end
@@ -257,26 +263,29 @@ classdef OuterTotalisticCellularAutomata < handle
                 
             end
         end
-        function otca = random(dims, K)
+        function otca = random(dims, K, cts)
         % random constructs a randomized OuterTotalisticCellularAutomata.
         
             rule = randi(K+1, [K+1, 6*K+1])-1; % 6 to include input/feedback
             grid = OuterTotalisticCellularAutomata.makeGrid(dims);
-            otca = OuterTotalisticCellularAutomata(rule, grid, K);
+            if nargin < 3, cts = 0; end;
+            otca = OuterTotalisticCellularAutomata(rule, grid, K, cts);
             
         end
-        function otca = smooth(dims, K)
+        function otca = smooth(dims, K, cts)
         % smooth constructs a smooth-rule OuterTotalisticCellularAutomata.
         
             rule = randi(K+1, [K+1, 6*K+1])-1; % 6 to include input/feedback
             grid = OuterTotalisticCellularAutomata.makeGrid(dims);
-            otca = OuterTotalisticCellularAutomata(rule, grid, K);
+            if nargin < 3, cts = 0.9; end;
+            otca = OuterTotalisticCellularAutomata(rule, grid, K, cts);
             
             % Change rule to "move toward neighborhood average"
             states = repmat((0:K)', 1, 6*K+1); % 6 to include input/feedback
             sums = repmat(0:6*K, K+1, 1);
-            rule = states - (states > (states+sums)/5) + (states < (states+sums)/5);
-            otca.rule = min(rule,K);
+            %rule = states - (states > (states+sums)/5) + (states < (states+sums)/5);
+            rule = (states+sums)/5;
+            otca.rule = min(max(rule,0),K);
 
         end
         % Gen ops
@@ -300,8 +309,8 @@ classdef OuterTotalisticCellularAutomata < handle
             end
             
             % Wrap child rules in otca objects
-            child1 = OuterTotalisticCellularAutomata(child1, parent1.grid, parent1.K);
-            child2 = OuterTotalisticCellularAutomata(child2, parent2.grid, parent2.K);
+            child1 = OuterTotalisticCellularAutomata(child1, parent1.grid, parent1.K, parent1.cts);
+            child2 = OuterTotalisticCellularAutomata(child2, parent2.grid, parent2.K, parent2.cts);
             
         end
         function child = mutate(parent, mutation_rate)
@@ -310,7 +319,7 @@ classdef OuterTotalisticCellularAutomata < handle
             amount = floor(abs(normrnd(0,1,size(parent.rule))));
             child = parent.rule + (mutations .* signs .* amount);
             child = min(max(child, 0), parent.K); % force to legal states
-            child = OuterTotalisticCellularAutomata(child, parent.grid, parent.K); % wrap
+            child = OuterTotalisticCellularAutomata(child, parent.grid, parent.K, parent.cts); % wrap
         end
     end
 end

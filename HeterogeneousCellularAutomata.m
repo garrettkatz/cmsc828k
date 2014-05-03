@@ -7,9 +7,10 @@ classdef HeterogeneousCellularAutomata < handle
         K; % number of states
         a; % column vector of unit activations
         readOut; % readout connections
+        cts;
     end
     methods
-        function hca = HeterogeneousCellularAutomata(rules, neighbors, K)
+        function hca = HeterogeneousCellularAutomata(rules, neighbors, K, cts)
         % HeterogeneousCellularAutomata constructs a cellular automata
         % object with the given rule table and dimensions.
         
@@ -18,6 +19,8 @@ classdef HeterogeneousCellularAutomata < handle
                 hca.neighbors = neighbors;
                 hca.K = K;
                 hca.a = zeros(size(neighbors,1), 1);
+                if nargin < 4, cts = 0; end;
+                hca.cts = cts;
             end
             
         end
@@ -30,14 +33,15 @@ classdef HeterogeneousCellularAutomata < handle
             neighbors = hca.neighbors;
             K = hca.K;
             pows = K.^(0:4)'; % conversion to base K
+            cts = hca.cts;
             
             % Feedback (Map to node index)
             a(ceil(N*(tanh(b)+1)/2)) = K-1;
             % Get neighborhood states
-            neighborhoods = reshape(a(neighbors(:)),N,5);
+            neighborhoods = round(reshape(a(neighbors(:)),N,5));
             % Apply rules
             idx = neighborhoods*pows + (K^5)*(0:numel(a)-1)' + 1; 
-            a = rules(idx);
+            a = cts*a + (1-cts)*rules(idx);
             hca.a = a;
         end
         function [fit, Y] = fitness(hca, X, T)
@@ -50,6 +54,7 @@ classdef HeterogeneousCellularAutomata < handle
             neighbors = hca.neighbors;
             K = hca.K;
             pows = K.^(0:4)'; % conversion to base K
+            cts = hca.cts;
             len = size(T,2);
 
             % Generate training data
@@ -62,10 +67,10 @@ classdef HeterogeneousCellularAutomata < handle
                 % Feedback (Map to node index)
                 a(ceil(N*(tanh(T(:,t))+1)/2)) = K-1;
                 % Get neighborhood states
-                neighborhoods = reshape(a(neighbors(:)),N,5);
+                neighborhoods = round(reshape(a(neighbors(:)),N,5));
                 % Apply rules
                 idx = neighborhoods*pows + (K^5)*(0:numel(a)-1)' + 1; 
-                a = rules(idx); % A(:,t+1) = fun( A(:,t), T(:,t) )
+                a = cts*a + (1-cts)*rules(idx); % A(:,t+1) = fun( A(:,t), T(:,t) )
             end
 
             % Ridge regression on readout
@@ -89,10 +94,10 @@ classdef HeterogeneousCellularAutomata < handle
                 % Feedback (Map to node index) for next round
                 a(ceil(N*(tanh(y)+1)/2)) = K-1;
                 % Get neighborhood states
-                neighborhoods = reshape(a(neighbors(:)),N,5);
+                neighborhoods = round(reshape(a(neighbors(:)),N,5));
                 % Apply rules
                 idx = neighborhoods*pows + (K^5)*(0:numel(a)-1)' + 1; 
-                a = rules(idx); % A(:,t+1) = fun( A(:,t), T(:,t) )
+                a = cts*a + (1-cts)*rules(idx); % A(:,t+1) = fun( A(:,t), T(:,t) )
                 % Output
                 y = readOut*A(:,t); % Y(:,t+1) = fun( A(:,t) )
             end
@@ -111,6 +116,7 @@ classdef HeterogeneousCellularAutomata < handle
             clone.neighbors = hca.neighbors;
             clone.K = hca.K;
             clone.a = hca.a;
+            clone.cts = hca.cts;
         end
         function check(hca, X, T, dims, step, framerate)
         % check visualizes performance on Mackey-glass
@@ -124,6 +130,7 @@ classdef HeterogeneousCellularAutomata < handle
             pows = K.^(0:4)'; % conversion to base K
             len = size(T,2);
             readOut = hca.readOut;
+            cts = hca.cts;
 
             % Re-stream using read-out
             Y = zeros(size(T));
@@ -138,10 +145,10 @@ classdef HeterogeneousCellularAutomata < handle
                 % Feedback (Map to node index) for next round
                 a(ceil(N*(tanh(y)+1)/2)) = K-1;
                 % Get neighborhood states
-                neighborhoods = reshape(a(neighbors(:)),N,5);
+                neighborhoods = round(reshape(a(neighbors(:)),N,5));
                 % Apply rules
                 idx = neighborhoods*pows + (K^5)*(0:numel(a)-1)' + 1; 
-                a = rules(idx); % A(:,t+1) = fun( A(:,t), T(:,t) )
+                a = cts*a + (1-cts)*rules(idx); % A(:,t+1) = fun( A(:,t), T(:,t) )
                 % Output
                 y = readOut*A(:,t); % Y(:,t+1) = fun( A(:,t) )
             end
@@ -190,12 +197,13 @@ classdef HeterogeneousCellularAutomata < handle
             neighbors = neighbors + 1;
             
         end
-        function hca = random(dims, K, lambda)
+        function hca = random(dims, K, lambda, cts)
         % random constructs a randomized HeterogeneousCellularAutomata.
         
             rules = randi(K, [K^5, prod(dims)])-1;
             neighbors = HeterogeneousCellularAutomata.makeNeighbors(dims);
-            hca = HeterogeneousCellularAutomata(rules, neighbors, K);
+            if nargin < 4, cts = 0; end;
+            hca = HeterogeneousCellularAutomata(rules, neighbors, K, cts);
             hca.rules(1,:) = 0; % quiescent stays quiescent
             % Control lambda
             hca.rules(rand(size(hca.rules)) > lambda) = 0;
@@ -209,8 +217,8 @@ classdef HeterogeneousCellularAutomata < handle
             rules2 = [parent2.rules(:,1:cutpt), parent1.rules(:,cutpt+1:end)];
             
             % Wrap child rules in frca objects
-            child1 = HeterogeneousCellularAutomata(rules1, parent1.neighbors, parent1.K);
-            child2 = HeterogeneousCellularAutomata(rules2, parent2.neighbors, parent2.K);
+            child1 = HeterogeneousCellularAutomata(rules1, parent1.neighbors, parent1.K, parent1.cts);
+            child2 = HeterogeneousCellularAutomata(rules2, parent2.neighbors, parent2.K, parent2.cts);
             
         end
         function child = mutate(parent, mutation_rate)
