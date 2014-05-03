@@ -80,9 +80,7 @@ classdef GeneticAlgorithm < handle
                
                % do mutations
                for i = 1:(population_size - num_elites)
-                  if rand < mutation_rate(ga.time)
-                      ga.population(i) = ga.mutate(ga.population(i));
-                  end
+                  ga.population(i) = ga.mutate(ga.population(i), mutation_rate(ga.time));
                end
            end
            

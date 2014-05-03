@@ -9,15 +9,17 @@ indvFit = @(individual) BinaryNumber.fitness(individual);
 create_individual = @() BinaryNumber.create_individual(16);
 fitness = @(population) arrayfun(indvFit, population);
 crossover = @(par1,par2) BinaryNumber.crossover(par1,par2);
-mutate = @(individual) BinaryNumber.mutate(individual, 0.05);
+mutate = @(individual, rate) BinaryNumber.mutate(individual, rate);
+options = {false}; 
 
 % run ga
-ga = GeneticAlgorithm(create_individual, fitness, crossover, mutate);
+ga = GeneticAlgorithm(create_individual, fitness, crossover, mutate, options);
 max_generations = 1000;
 population_size = 100;
-crossover_rate = 1;
-mutation_rate = 0.1;
-best = ga.evolve(max_generations, population_size, crossover_rate, mutation_rate);
+crossover_rate = @(t) 1;
+mutation_rate = @(t) 0.05;
+num_elites = 1;
+[best, maxes, means] = ga.evolve(max_generations, population_size, num_elites, crossover_rate, mutation_rate);
 
 best.number
 

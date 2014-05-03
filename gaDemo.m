@@ -23,15 +23,15 @@ options = {false};
 % initialize function handles for ga
 make_individual = @() OuterTotalisticCellularAutomata.random(dims,K);
 crossover = @(par1,par2) OuterTotalisticCellularAutomata.crossover(par1,par2);
-mutate = @(individual) OuterTotalisticCellularAutomata.mutate(individual, 0.1);
+mutate = @(individual, rate) OuterTotalisticCellularAutomata.mutate(individual, rate);
 
 % run ga
 ga = GeneticAlgorithm(make_individual, indvFit, crossover, mutate, options);
 max_generations = 5;
 population_size = 5;
 num_elites = 1;
-crossover_rate = @(i) 1;
-mutation_rate = @(i) 0.2;
+crossover_rate = @(t) 1;
+mutation_rate = @(t) 0.99^t;
 tic
 %best = ga.evolve(max_generations, population_size, crossover_rate, mutation_rate);
 [best, maxes, means] = ga.evolve(max_generations, population_size, num_elites, crossover_rate, mutation_rate,true);

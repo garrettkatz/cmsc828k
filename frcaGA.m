@@ -22,7 +22,7 @@ options = {false};
 % initialize function handles for ga
 make_individual = @() FullRuleCellularAutomata.random(dims,K);
 crossover = @(par1,par2) FullRuleCellularAutomata.crossover(par1,par2);
-mutate = @(individual) FullRuleCellularAutomata.mutate(individual, 0.1);
+mutate = @(individual, rate) FullRuleCellularAutomata.mutate(individual, rate);
 
 % run ga
 ga = GeneticAlgorithm(make_individual, indvFit, crossover, mutate, options);
