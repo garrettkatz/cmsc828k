@@ -31,12 +31,12 @@ classdef FullRuleCellularAutomata < handle
             K = frca.K;
             pows = K.^(0:4)'; % conversion to base K
             
-            % Feedback (Map to node index)
-            a(ceil(N*(tanh(b)+1)/2)) = K-1;
             % Get neighborhood states
             neighborhood = reshape(a(neighbors(:)),N,5);
             % Apply rules
             a = rule(neighborhood*pows+1);
+            % Feedback (Map to node index) for next round
+            a(ceil(N*(tanh(b)+1)/2)) = K-1;
             
             frca.a = a;
         end

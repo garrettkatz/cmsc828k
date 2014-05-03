@@ -1,20 +1,21 @@
-classdef FullRuleCellularAutomata < handle
-% A FullRuleCellularAutomata object stores the full rule table for every
-% possible neighborhood configuration.  Assumes 5-neighborhood, 2d CA with
-% periodic boundaries and binary states.
+classdef HeterogeneousCellularAutomata < handle
+% A HeterogenousCellularAutomata object is like FullRuleCellularAutomata,
+% except a single CA can have different rule sets for different nodes.
     properties
-        rule; % Rule table
-        neighbors; % N x 5 neihbor indices (including self)
+        rules; % cell array of rule tables
+        followers; % followers{i} = units that follow rules{i}
+        neighbors; % N x 5 neighbor indices (including self)
         K; % number of states
         a; % column vector of unit activations
     end
     methods
-        function frca = FullRuleCellularAutomata(rule, neighbors, K)
-        % OuterTotalisticCellularAutomata constructs a cellular automata
+        function frca = HeterogeneousCellularAutomata(rules, followers, neighbors, K)
+        % HeterogeneousCellularAutomata constructs a cellular automata
         % object with the given rule table and dimensions.
         
             if nargin > 0 % check for object array construction
-                frca.rule = rule;
+                frca.rules = rules;
+                frca.followers = followers;
                 frca.neighbors = neighbors;
                 frca.K = K;
                 frca.a = zeros(size(neighbors,1), 1);
@@ -26,18 +27,20 @@ classdef FullRuleCellularAutomata < handle
             % Localize variables
             a = frca.a;
             N = numel(a);
-            rule = frca.rule;
+            rules = frca.rules;
+            followers = frca.followers;
             neighbors = frca.neighbors;
             K = frca.K;
             pows = K.^(0:4)'; % conversion to base K
             
-            % Feedback (Map to node index)
+            % Feedback (Map to node index) for next round
             a(ceil(N*(tanh(b)+1)/2)) = K-1;
             % Get neighborhood states
             neighborhood = reshape(a(neighbors(:)),N,5);
             % Apply rules
-            a = rule(neighborhood*pows+1);
-            
+            for i = 1:numel(followers)
+                a(followers{i}) = rules{i}(neighborhood(followers{i},:)*pows+1);
+            end
             frca.a = a;
         end
         function [fit, readOut, Y] = fitness(frca, X, T)
@@ -46,7 +49,8 @@ classdef FullRuleCellularAutomata < handle
             % Localize variables
             a = zeros(size(frca.a));
             N = numel(a);
-            rule = frca.rule;
+            rules = frca.rules;
+            followers = frca.followers;
             neighbors = frca.neighbors;
             K = frca.K;
             pows = K.^(0:4)'; % conversion to base K
@@ -59,12 +63,14 @@ classdef FullRuleCellularAutomata < handle
             for t = 1:len
                 % Record activations
                 A(:,t) = a;
-                % Feedback (Map to node index)
-                a(ceil(N*(tanh(T(:,t))+1)/2)) = K-1;
+                % Feedback (Map to node index) for next round
+                a(ceil(N*(tanh(b)+1)/2)) = K-1;
                 % Get neighborhood states
                 neighborhood = reshape(a(neighbors(:)),N,5);
                 % Apply rules
-                a = rule(neighborhood*pows+1);
+                for i = 1:numel(followers)
+                    a(followers{i}) = rules{i}(neighborhood(followers{i},:)*pows+1);
+                end
             end
 
             % Ridge regression on readout
@@ -85,12 +91,14 @@ classdef FullRuleCellularAutomata < handle
                 Y(:,t) = y;
                 % Force
                 if t < len/2, y = T(:,t); end;
-                % Feedback
-                a(ceil(N*(tanh(y)+1)/2)) = 1;
+                % Feedback (Map to node index) for next round
+                a(ceil(N*(tanh(b)+1)/2)) = K-1;
                 % Get neighborhood states
                 neighborhood = reshape(a(neighbors(:)),N,5);
                 % Apply rules
-                a = rule(neighborhood*pows+1);
+                for i = 1:numel(followers)
+                    a(followers{i}) = rules{i}(neighborhood(followers{i},:)*pows+1);
+                end
                 % Output
                 y = readOut*A(:,t);
             end
@@ -101,8 +109,9 @@ classdef FullRuleCellularAutomata < handle
             fit = 1/err;
         end
         function clone = copy(frca)
-            clone = FullRuleCellularAutomata;
-            clone.rule = frca.rule;
+            clone = HeterogeneousCellularAutomata;
+            clone.rules = frca.rules;
+            clone.followers = frca.followers;
             clone.neighbors = frca.neighbors;
             clone.K = frca.K;
             clone.a = frca.a;
@@ -132,17 +141,27 @@ classdef FullRuleCellularAutomata < handle
             neighbors = neighbors + 1;
             
         end
-        function frca = random(dims,K)
-        % random constructs a randomized FullRuleCellularAutomata.
+        function hca = random(dims, K)
+        % random constructs a randomized HeterogeneousCellularAutomata.
         
-            rule = randi(K, [K^5, 1])-1;
+            rules = {randi(K, [K^5, 1])-1};
             neighbors = FullRuleCellularAutomata.makeNeighbors(dims);
-            frca = FullRuleCellularAutomata(rule, neighbors, K);
+            followers = {1:size(neighbors,1)};
+            hca = FullRuleCellularAutomata(rule, followers, neighbors, K);
             
         end
         % Gen ops
         function [child1, child2] = crossover(parent1, parent2)
-        % Cross-over rule tables, assuming equal K
+        % Cross-over units
+            leaders1 = zeros(size(parent1.neighbors,1),1);
+            for i = 1:numel(parent1.followers)
+                leaders1(parent1.followers{i}) = i;
+            end
+            leaders2 = zeros(size(parent2.neighbors,1),1);
+            for i = 1:numel(parent2.followers)
+                leaders1(parent2.followers{i}) = i;
+            end
+            followers2 = zeros(size(parent2.neighbors,1),1);
             cutpt = randi(parent1.K-1);
             rule1 = [parent1.rule(1:cutpt); parent2.rule(cutpt+1:end)];
             rule2 = [parent2.rule(1:cutpt); parent1.rule(cutpt+1:end)];
@@ -153,10 +172,15 @@ classdef FullRuleCellularAutomata < handle
             
         end
         function child = mutate(parent, mutation_rate)
-            rule = parent.rule;
-            mutations = rand(size(parent.rule)) < mutation_rate;
-            rule(mutations) = randi(parent.K-1, nnz(mutations), 1);
-            child = FullRuleCellularAutomata(rule, parent.neighbors, parent.K); % wrap
+            child = HeterogeneousCellularAutomata;
+            child.rules = parent.rules;
+            for i = 1:numel(child.rules)
+                mutations = rand(size(child.rules{i})) < mutation_rate;
+                child.rules{i}(mutations) = randi(parent.K-1, nnz(mutations), 1);
+            end
+            child.followers = parent.followers;
+            child.K = parent.K;
+            child.neighbors = parent.neighbors;
         end
     end
 end
