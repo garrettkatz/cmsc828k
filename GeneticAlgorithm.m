@@ -62,7 +62,7 @@ classdef GeneticAlgorithm < handle
                end
                
                % do fitness proportionate selection
-               ga.population = selection(ga, fit, population_size - num_elites);
+               ga.population = top_half_selection(ga, fit, population_size - num_elites);
                ga.population((population_size - num_elites + 1):population_size) = elites; 
                
                % do crossover
@@ -105,8 +105,20 @@ classdef GeneticAlgorithm < handle
            end
        end
        
+       % selects the top half of the population
+       function parents = top_half_selection(ga, fit, num_to_select)
+           [~, idxs] = sort(fit,'descend');
+           half = floor(num_to_select / 2);
+           parents = [ga.population(idxs(1:half));ga.population(idxs(1:half))];
+           if mod(num_to_select, 2)
+              parents(num_to_select) = ga.population(half + 1); 
+           end
+           
+           parents = parents(randperm(num_to_select));
+       end
+       
        % creates a fitness proportionate list of parents
-       function parents = selection(ga, fit, num_to_select)
+       function parents = fitness_prop_selection(ga, fit, num_to_select)
            parents = ga.make_individual(); % dummy to set class
            
            % calculate fitnes
