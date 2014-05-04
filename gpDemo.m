@@ -23,18 +23,24 @@ crossover = @(par1,par2) OuterTotalisticCellularAutomata.crossover(par1,par2);
 mutate = @(individual, rate) OuterTotalisticCellularAutomata.mutate(individual, rate);
 
 % run ga
-max_generations = 128;
-population_size = 8; % Should be divisible by 4
+max_generations = 1;
+population_size = 4; % Should be divisible by 4
+lambda = 0.3;
 for i = 1:population_size
-    initial_population(i) = OuterTotalisticCellularAutomata.smooth(dims,K); % <- good seeds
-    % initial_population(i) = OuterTotalisticCellularAutomata.random(dims,K);
+    %initial_population(i) = OuterTotalisticCellularAutomata.smooth(dims,K,lambda); % <- good seeds
+    initial_population(i) = OuterTotalisticCellularAutomata.random(dims,K,lambda);
 end
-num_elites = 4;
+num_elites = 1;
 crossover_rate = @(t) 1;
-mutation_rate = @(t) 0.1*(0.95^t);
+mutation_rate = @(t) 0.5*(0.95^t);
 gp = GeneticProgrammer(initial_population, indvFit, crossover, mutate, options);
 tic
-[best, fits] = gp.evolve(max_generations, num_elites, crossover_rate, mutation_rate,true);
+[best, fits, summaries] = gp.evolve(max_generations, num_elites, crossover_rate, mutation_rate,true);
 toc
 
 fit = indvFit(best)
+plt = repmat(1:max_generations,size(fits,1),1);
+scatter(plt(:),fits(:));
+hold on
+plot(mean(fits,1),'r+');
+hold off

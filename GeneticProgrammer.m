@@ -21,7 +21,7 @@ classdef GeneticProgrammer < handle
        end
        
        % runs the GP and returns the best solution found
-       function [best, fits] = evolve(gp, max_generations, num_elites, crossover_rate, mutation_rate, debug)
+       function [best, fits, summaries] = evolve(gp, max_generations, num_elites, crossover_rate, mutation_rate, debug)
            % Prepare session to run in parallel
            if gp.options{1}
                parpool('local', 2); 
@@ -35,6 +35,7 @@ classdef GeneticProgrammer < handle
            
            gp.time = 0;
            fits = zeros(population_size, max_generations);
+           summaries = cell(population_size, max_generations);
            
            % evolve population
            while gp.time < max_generations
@@ -43,6 +44,9 @@ classdef GeneticProgrammer < handle
                % calculate fitness
                fit = evalFitness(gp, population_size);
                fits(:,gp.time) = fit;
+               for i = 1:population_size
+                   summaries{i,gp.time} = gp.population(i).summary();
+               end
                
                if debug
                    disp(['Generation:  ', num2str(gp.time)]);
