@@ -263,11 +263,41 @@ classdef OuterTotalisticCellularAutomata < handle
                 
             end
         end
+        function grid = makeGridPeriodic(dims)
+            if (numel(dims) ~= 2)
+                grid = [];
+                return
+            end
+            % List (r,c) coordinates for each cell (0-based idx)
+            R = dims(1); C = dims(2);
+            r = repmat((0:R-1)',C,1);
+            c = reshape(repmat(0:C-1, R, 1),[],1);
+            % convert neighborhood to linear index
+            neighbors = [...
+                R*c + r,... %self
+                R*mod(c-1,C) + r,... % left
+                R*mod(c+1,C) + r,... % right
+                R*c + mod(r-1,R),... % up
+                R*c + mod(r+1,R) ...  % down
+            ];
+            % 1 based indexing
+            neighbors = neighbors + 1;
+            grid = zeros(prod(dims),prod(dims));
+            for i=1:size(neighbors,1)
+                grid(i,neighbors(i,:)) = 1;
+            end
+            grid = sparse(grid);
+        end
         function otca = random(dims, K, cts)
         % random constructs a randomized OuterTotalisticCellularAutomata.
         
+            persistent grid
+            if (isempty(grid))
+                grid = OuterTotalisticCellularAutomata.makeGridPeriodic(dims);
+            end
+        
             rule = randi(K+1, [K+1, 6*K+1])-1; % 6 to include input/feedback
-            grid = OuterTotalisticCellularAutomata.makeGrid(dims);
+            
             if nargin < 3, cts = 0; end;
             otca = OuterTotalisticCellularAutomata(rule, grid, K, cts);
             
