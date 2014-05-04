@@ -106,6 +106,9 @@ classdef OuterTotalisticCellularAutomata < handle
                 bs = K*(tanh(bs)+1)/2;
                 % Get neighborhood sum including external signals
                 nsum = grid*a;
+%                 size(a)
+%                 size(nsum)
+%                 max(xi)
                 nsum(xi) = nsum(xi)+xs;
                 nsum(bi) = nsum(bi)+bs;
                 % Force to indices
@@ -317,13 +320,22 @@ classdef OuterTotalisticCellularAutomata < handle
             states = repmat((0:K)', 1, 6*K+1); % 6 to include input/feedback
             sums = repmat(0:6*K, K+1, 1);
             rule = (states+sums)/5;
-            % enforce lambda
-            sorted = sort(rule(:));
-            cutoff = sorted(round(lambda*numel(rule)));
-            rule(rule <= cutoff) = 0;
-            rulegt = rule(rule > cutoff);
-            rule(rule > cutoff) = round(K*(rulegt-cutoff)./(K-cutoff));
-            otca.rule = min(max(rule,0),K);
+            otca.rule = min(max(round(rule),0),K);
+            otca.lambda = 1-(nnz(otca.rule)/numel(otca.rule));
+
+        end
+        function otca = gauss(dims, K, cts)
+        % gauss constructs a gauss-rule OuterTotalisticCellularAutomata.
+        
+            if nargin < 3, cts = rand; end;
+            otca = OuterTotalisticCellularAutomata.random(dims,K,0,cts);
+            
+            num_guass = 10;
+            otca.rule(:) = K/2;
+            for n = 1:num_guass
+                otca.rule = otca.rule + OuterTotalisticCellularAutomata.gaussRule(size(otca.rule), K/2, K/5);
+            end
+            otca.rule = min(max(otca.rule,0),K);
             otca.lambda = 1-(nnz(otca.rule)/numel(otca.rule));
 
         end
@@ -352,42 +364,64 @@ classdef OuterTotalisticCellularAutomata < handle
             child2 = OuterTotalisticCellularAutomata(child2, parent2.grid, parent2.K, parent2.cts);
             
         end
+        function [child1, child2] = smoothCrossover(parent1, parent2)
+            
+            sr = OuterTotalisticCellularAutomata.sigRule(size(parent1.rule));
+            rule1 = sr.*parent1.rule + (1-sr).*parent2.rule;
+            rule1 = min(max(round(rule1),0),parent1.K);
+            rule2 = sr.*parent2.rule + (1-sr).*parent1.rule;
+            rule2 = min(max(round(rule2),0),parent1.K);
+            
+            % Wrap child rules in otca objects
+            child1 = OuterTotalisticCellularAutomata(rule1, parent1.grid, parent1.K, parent1.cts);
+            child2 = OuterTotalisticCellularAutomata(rule2, parent2.grid, parent2.K, parent2.cts);
+            
+        end
         function child = mutate(parent, mutation_rate)
             
             mutations = rand(size(parent.rule)) < mutation_rate;
             signs = sign(rand(size(parent.rule)) - 0.5);
             amount = floor(abs(parent.K/10*normrnd(0,1,size(parent.rule))));
             child = parent.rule + (mutations .* signs .* amount);
-            % enforce lambda
-            frac = parent.lambda - (1-nnz(child)/numel(child));
-            child(rand(size(child)) < frac) = 0;
+            child = min(max(round(child),0),parent.K);
             child = OuterTotalisticCellularAutomata(child, parent.grid, parent.K, parent.cts); % wrap
+            
         end
-        function child = gaussMutate(parent, mutation_rate)
+        function rule = gaussRule(sz, height, width)
             persistent i;
             persistent j;
             if isempty(i)
-                [i, j] = meshgrid(1:size(parent.rule,1),1:size(parent.rule,2));
+                [i, j] = meshgrid(1:sz(1),1:sz(2));
                 i = i';
                 j = j';
             end
-            num_mutators = round(mutation_rate*numel(parent.rule)/1024);
+            i_c = randi(sz(1));
+            j_c = randi(sz(2));
+            rule = randn*height*exp(-((i-i_c).^2 + (j-j_c).^2)/(2*width)^2);
+        end
+        function rule = sigRule(sz, width)
+            persistent i;
+            persistent j;
+            if isempty(i)
+                [i, j] = meshgrid(1:sz(1),1:sz(2));
+                i = i';
+                j = j';
+            end
+            if nargin < 2, width = 0.1; end;
+            i_c = randi(sz(1));
+            j_c = randi(sz(2));
+            rule = 1./(1+exp(-width*(i-i_c))).*1./((1+exp(-width*(j-j_c))));
+        end
+        function child = gaussMutate(parent, mutation_rate)
+            
+            num_mutators = 10;
             rule = parent.rule;
             for m = 1:num_mutators
-                i_c = randi(size(parent.rule,1));
-                j_c = randi(size(parent.rule,2));
-                kernel = exp(-((i-i_c).^2 + (j-j_c).^2)/(2*mutation_rate*parent.K)^2);
-                rule = rule + randn*mutation_rate*parent.K*kernel;
+                rule = rule + OuterTotalisticCellularAutomata.gaussRule(size(rule), parent.K/2*mutation_rate, parent.K/5*mutation_rate);
             end
             rule = min(max(round(rule),0),parent.K);
-            % enforce lambda
-            lambda = parent.lambda;
-            sorted = sort(rule(:));
-            cutoff = sorted(round(lambda*numel(rule)));
-            rule(rule <= cutoff) = 0;
-            rulegt = rule(rule > cutoff);
-            rule(rule > cutoff) = round(parent.K*(rulegt-cutoff)./(parent.K-cutoff));
             child = OuterTotalisticCellularAutomata(rule, parent.grid, parent.K, parent.cts); % wrap
+            
         end
     end
 end
