@@ -71,6 +71,7 @@ classdef GeneticAlgorithm < handle
                for i = 1:num_new
                    ga.population(num_to_select + i) = ga.make_individual(); 
                end
+               ga.population = ga.population(randperm(population_size - num_elites));
                
                % add elites
                ga.population((population_size - num_elites + 1):population_size) = elites; 
