@@ -22,10 +22,10 @@ classdef GeneticAlgorithm < handle
        
        % runs the GA and returns the best solution found
        %function [best, maxes, means] = evolve(ga, max_generations, population_size, num_elites, crossover_rate, mutation_rate, debug)
-       function [best, fvals] = evolve(ga, max_generations, population_size, num_elites, crossover_rate, mutation_rate, debug)
+       function [bests, fvals] = evolve(ga, max_generations, population_size, num_elites, crossover_rate, mutation_rate, debug)
            % Prepare session to run in parallel
            if ga.options{1}
-               parpool('local', [2 10]); 
+               %parpool('local', [2 10]); 
            end
            
            if nargin < 7
@@ -34,6 +34,7 @@ classdef GeneticAlgorithm < handle
            
            ga.time = 0;
            fvals = zeros(max_generations, population_size);
+           bests = cell(max_generations,1);
            %maxes = zeros(max_generations,1);
            %means = zeros(max_generations,1);
            
@@ -52,8 +53,10 @@ classdef GeneticAlgorithm < handle
                fit_time = toc(tfit);
                
                fvals(ga.time, :) = fit';
-               %maxes(ga.time) = max(fit);
-               %means(ga.time) = mean(fit);
+               
+                % find the best individual in the population
+               [~, best_idx] = max(fvals(ga.time, :));
+               bests{ga.time} = ga.population(best_idx);
                
                if debug
                    disp(['Generation:  ', num2str(ga.time)]);
@@ -88,15 +91,13 @@ classdef GeneticAlgorithm < handle
                for i = 1:(population_size - num_elites)
                   ga.population(i) = ga.mutate(ga.population(i), mutation_rate(ga.time));
                end
+               
            end
            
-           % find the best individual in the population
-           [~, best_idx] = max(evalFitness(ga, population_size));
-           best = ga.population(best_idx);
            
            % close parallel session
            if ga.options{1} 
-               delete(gcp('nocreate')); 
+               %delete(gcp('nocreate')); 
            end
        end
        

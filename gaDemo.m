@@ -29,14 +29,14 @@ mutate = @(individual, rate) OuterTotalisticCellularAutomata.mutate(individual, 
 % run ga
 ga = GeneticAlgorithm(make_individual, indvFit, crossover, mutate, options);
 max_generations = 100;
-population_size = 500;
-num_elites = 5;
+population_size = 10;
+num_elites = 1;
 crossover_rate = @(t) 0.8;
-mutation_rate = @(t) 0.1*exp(-t/50);
+mutation_rate = @(t) 0.1*exp(-t/(0.5*max_generations));
 tic
 
 disp('Starting evolution...')
-[best, fvals] = ga.evolve(max_generations, population_size, num_elites, crossover_rate, mutation_rate,true);
+[bests, fvals] = ga.evolve(max_generations, population_size, num_elites, crossover_rate, mutation_rate,true);
 %best = ga.evolve(max_generations, population_size, crossover_rate, mutation_rate);
 %[best, maxes, means] = ga.evolve(max_generations, population_size, num_elites, crossover_rate, mutation_rate,true);
 toc
@@ -49,4 +49,6 @@ toc
 % readBack = sparse(ext(11:20), 1, 1, N, 1); % last 10 for feedback
 % rcMackey = ReservoirComputer(best, readIn, readOut, readBack);
 % [trainErr, testErr, ~] = Fitness.evalMackey(rcMackey, true)
-fit = indvFit(best)
+best = bests{end};
+fit = indvFit(best);
+fprintf('Final fitness: %f\n',fit)
