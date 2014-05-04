@@ -21,8 +21,8 @@ classdef GeneticAlgorithm < handle
        end
        
        % runs the GA and returns the best solution found
-       %function [best, maxes, means] = evolve(ga, max_generations, population_size, num_elites, crossover_rate, mutation_rate, debug)
-       function [bests, fvals] = evolve(ga, max_generations, population_size, num_elites, crossover_rate, mutation_rate, debug)
+       function [bests, fits] = evolve(ga, max_generations, population_size, ...
+               num_elites, num_new, crossover_rate, mutation_rate, debug)
            % Prepare session to run in parallel
            if ga.options{1}
                %parpool('local', [2 10]); 
@@ -33,7 +33,7 @@ classdef GeneticAlgorithm < handle
            end
            
            ga.time = 0;
-           fvals = zeros(max_generations, population_size);
+           fits = zeros(population_size, max_generations);
            bests = cell(max_generations,1);
            %maxes = zeros(max_generations,1);
            %means = zeros(max_generations,1);
@@ -51,17 +51,17 @@ classdef GeneticAlgorithm < handle
                tfit = tic;
                fit = evalFitness(ga, population_size);
                fit_time = toc(tfit);
-               
-               fvals(ga.time, :) = fit';
+          
+               fits(:,ga.time) = fit;
                
                 % find the best individual in the population
-               [~, best_idx] = max(fvals(ga.time, :));
+               [~, best_idx] = max(fits(:,ga.time));
                bests{ga.time} = ga.population(best_idx);
                
                if debug
                    disp(['Generation:  ', num2str(ga.time)]);
-                   disp(['Max fitness: ', num2str(max(fvals(ga.time,:)))]);
-                   disp(['Avg fitness: ', num2str(mean(fvals(ga.time,:)))]);
+                   disp(['Max fitness: ', num2str(max(fit))]);
+                   disp(['Avg fitness: ', num2str(mean(fit))]);
                    disp(['Eval time: ', num2str(fit_time)]);
                    disp(' ');
                end
@@ -73,8 +73,18 @@ classdef GeneticAlgorithm < handle
                    elites(i) = elites(i).copy();
                end
                
+               num_to_select = population_size - (num_elites + num_new);
+               
                % do fitness proportionate selection
-               ga.population = selection(ga, fit, population_size - num_elites);
+               ga.population = top_half_selection(ga, fit, num_to_select);
+               
+               % add new members
+               for i = 1:num_new
+                   ga.population(num_to_select + i) = ga.make_individual(); 
+               end
+               ga.population = ga.population(randperm(population_size - num_elites));
+               
+               % add elites
                ga.population((population_size - num_elites + 1):population_size) = elites; 
                
                % do crossover
@@ -116,8 +126,20 @@ classdef GeneticAlgorithm < handle
            end
        end
        
+       % selects the top half of the population
+       function parents = top_half_selection(ga, fit, num_to_select)
+           [~, idxs] = sort(fit,'descend');
+           half = floor(num_to_select / 2);
+           parents = [ga.population(idxs(1:half));ga.population(idxs(1:half))];
+           if mod(num_to_select, 2)
+              parents(num_to_select) = ga.population(half + 1); 
+           end
+           
+           parents = parents(randperm(num_to_select));
+       end
+       
        % creates a fitness proportionate list of parents
-       function parents = selection(ga, fit, num_to_select)
+       function parents = fitness_prop_selection(ga, fit, num_to_select)
            parents = ga.make_individual(); % dummy to set class
            
            % calculate fitnes

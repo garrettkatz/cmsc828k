@@ -11,6 +11,7 @@ classdef OuterTotalisticCellularAutomata < handle
         a; % Column vector of unit activations
         readIn; readBack; readOut; % reservoir matrices
         cts; % continuity parameter
+        lambda;
     end
     methods
         function otca = OuterTotalisticCellularAutomata(rule, grid, K, cts)
@@ -36,6 +37,7 @@ classdef OuterTotalisticCellularAutomata < handle
                 otca.readBack = readBack;
                 if nargin < 4, cts = 0; end;
                 otca.cts = cts;
+                otca.lambda = 1-(nnz(otca.rule)/numel(otca.rule));
             end
             
         end
@@ -232,6 +234,9 @@ classdef OuterTotalisticCellularAutomata < handle
                 pause(framerate); % ~seconds per frame
             end
         end
+        function lambda = summary(otca)
+            lambda = otca.lambda;
+        end
     end
     methods(Static = true)
         function grid = makeGrid(dims)
@@ -302,20 +307,24 @@ classdef OuterTotalisticCellularAutomata < handle
             otca = OuterTotalisticCellularAutomata(rule, grid, K, cts);
             
         end
-        function otca = smooth(dims, K, cts)
+        function otca = smooth(dims, K, lambda, cts)
         % smooth constructs a smooth-rule OuterTotalisticCellularAutomata.
         
-            rule = randi(K+1, [K+1, 6*K+1])-1; % 6 to include input/feedback
-            grid = OuterTotalisticCellularAutomata.makeGrid(dims);
-            if nargin < 3, cts = 0.9; end;
-            otca = OuterTotalisticCellularAutomata(rule, grid, K, cts);
+            if nargin < 4, cts = rand; end;
+            otca = OuterTotalisticCellularAutomata.random(dims,K,lambda,cts);
             
             % Change rule to "move toward neighborhood average"
             states = repmat((0:K)', 1, 6*K+1); % 6 to include input/feedback
             sums = repmat(0:6*K, K+1, 1);
-            %rule = states - (states > (states+sums)/5) + (states < (states+sums)/5);
             rule = (states+sums)/5;
+            % enforce lambda
+            sorted = sort(rule(:));
+            cutoff = sorted(round(lambda*numel(rule)));
+            rule(rule <= cutoff) = 0;
+            rulegt = rule(rule > cutoff);
+            rule(rule > cutoff) = round(K*(rulegt-cutoff)./(K-cutoff));
             otca.rule = min(max(rule,0),K);
+            otca.lambda = 1-(nnz(otca.rule)/numel(otca.rule));
 
         end
         % Gen ops
@@ -344,12 +353,41 @@ classdef OuterTotalisticCellularAutomata < handle
             
         end
         function child = mutate(parent, mutation_rate)
+            
             mutations = rand(size(parent.rule)) < mutation_rate;
             signs = sign(rand(size(parent.rule)) - 0.5);
-            amount = floor(abs(normrnd(0,1,size(parent.rule))));
+            amount = floor(abs(parent.K/10*normrnd(0,1,size(parent.rule))));
             child = parent.rule + (mutations .* signs .* amount);
-            child = min(max(child, 0), parent.K); % force to legal states
+            % enforce lambda
+            frac = parent.lambda - (1-nnz(child)/numel(child));
+            child(rand(size(child)) < frac) = 0;
             child = OuterTotalisticCellularAutomata(child, parent.grid, parent.K, parent.cts); % wrap
+        end
+        function child = gaussMutate(parent, mutation_rate)
+            persistent i;
+            persistent j;
+            if isempty(i)
+                [i, j] = meshgrid(1:size(parent.rule,1),1:size(parent.rule,2));
+                i = i';
+                j = j';
+            end
+            num_mutators = round(mutation_rate*numel(parent.rule)/1024);
+            rule = parent.rule;
+            for m = 1:num_mutators
+                i_c = randi(size(parent.rule,1));
+                j_c = randi(size(parent.rule,2));
+                kernel = exp(-((i-i_c).^2 + (j-j_c).^2)/(2*mutation_rate*parent.K)^2);
+                rule = rule + randn*mutation_rate*parent.K*kernel;
+            end
+            rule = min(max(round(rule),0),parent.K);
+            % enforce lambda
+            lambda = parent.lambda;
+            sorted = sort(rule(:));
+            cutoff = sorted(round(lambda*numel(rule)));
+            rule(rule <= cutoff) = 0;
+            rulegt = rule(rule > cutoff);
+            rule(rule > cutoff) = round(parent.K*(rulegt-cutoff)./(parent.K-cutoff));
+            child = OuterTotalisticCellularAutomata(rule, parent.grid, parent.K, parent.cts); % wrap
         end
     end
 end

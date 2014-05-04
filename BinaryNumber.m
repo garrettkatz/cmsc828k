@@ -23,9 +23,13 @@ classdef BinaryNumber
             child2 = BinaryNumber(num2);
         end
         
-        function child = mutate(parent, mutate_chance)
-            num = (rand(16,1) < (1 - mutate_chance)) == parent.number;
-            child = BinaryNumber(num * 1.0);
+        function child = mutate(parent, mutate_chance, time)
+            if rand < BinaryNumber.mutation_rate(time)
+                num = (rand(16,1) < (1 - mutate_chance)) == parent.number;
+                child = BinaryNumber(num * 1.0);
+            else 
+                child = parent;
+            end
         end
         
         function r = crossover_rate(time)
@@ -48,7 +52,7 @@ classdef BinaryNumber
             create_individual = @() BinaryNumber.create_individual(16);
             fitness = @(population) arrayfun(indvFit, population);
             crossover = @(par1,par2) BinaryNumber.crossover(par1,par2);
-            mutate = @(individual) BinaryNumber.mutate(individual, 0.05);
+            mutate = @(individual, time) BinaryNumber.mutate(individual, 0.05, time);
             crossover_rate = @(time) BinaryNumber.crossover_rate(time);
             mutation_rate = @(time) BinaryNumber.mutation_rate(time);
             options = {0};
@@ -58,16 +62,14 @@ classdef BinaryNumber
             max_generations = 100;
             population_size = 100;
             num_elites = 10;
+            num_new = 10;
             debug = true;
-            [best, maxes, means] = ga.evolve(max_generations, population_size, num_elites, crossover_rate, mutation_rate, debug);
+            [best, fits] = ga.evolve(max_generations, population_size, ...
+                num_elites, num_new, crossover_rate, mutation_rate, debug);
 
             best.number
 
             BinaryNumber.fitness(best)
-            
-            maxes 
-            
-            means
         end
     end
     
