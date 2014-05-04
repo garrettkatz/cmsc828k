@@ -4,8 +4,12 @@ close;
 
 % Make single Mackey
 T = makeMackeyGlass(0.5+rand,17,0.1,50000);
-T = T(10001:10:end); % subsample
 T = tanh(T-1); % squash into (-1,1)
+
+%Make sine wave time series
+%T = makeSineSeries(3,[1 6],50,1000);
+
+T = T(10001:10:end); % subsample
 X = 0.2*ones(size(T)); % constant bias
 
 % Load speech data for individual fitness evaluation
@@ -30,8 +34,8 @@ mutate = @(individual, rate) OuterTotalisticCellularAutomata.gaussMutate(individ
 
 % run ga
 ga = GeneticAlgorithm(make_individual, indvFit, crossover, mutate, options);
-max_generations = 5;
-population_size = 5;
+max_generations = 50;
+population_size = 10;
 num_elites = 1;
 num_new = 1;
 crossover_rate = @(t) 0.8;
@@ -41,9 +45,10 @@ tic
 disp('Starting evolution...')
 [bests, fits] = ga.evolve(max_generations, population_size, num_elites, num_new, crossover_rate, mutation_rate,true);
 toc
+best = bests{end};
 
 % evaluate best's performance on mackey-glass
-fit = indvFit(best)
+fit = indvFit(best);
 best.check(X,T,[20 20],100,1/48)
 plt = repmat(1:max_generations,size(fits,1),1);
 scatter(plt(:),fits(:));

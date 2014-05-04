@@ -296,12 +296,13 @@ classdef OuterTotalisticCellularAutomata < handle
             end
             grid = sparse(grid);
         end
-        function otca = random(dims, K, cts)
+        function otca = random(dims, K, lambda, cts)
         % random constructs a randomized OuterTotalisticCellularAutomata.
         
             persistent grid
             if (isempty(grid))
-                grid = OuterTotalisticCellularAutomata.makeGridPeriodic(dims);
+                grid = OuterTotalisticCellularAutomata.makeGrid(dims);
+                %grid = OuterTotalisticCellularAutomata.makeGridPeriodic(dims);
             end
         
             rule = randi(K+1, [K+1, 6*K+1])-1; % 6 to include input/feedback
