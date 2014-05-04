@@ -304,10 +304,9 @@ classdef OuterTotalisticCellularAutomata < handle
                 grid = OuterTotalisticCellularAutomata.makeGrid(dims);
                 %grid = OuterTotalisticCellularAutomata.makeGridPeriodic(dims);
             end
-        
-            rule = randi(K+1, [K+1, 6*K+1])-1; % 6 to include input/feedback
-            
-            if nargin < 3, cts = 0; end;
+            rule = randi(K, [K+1, 6*K+1]); % 6 to include input/feedback
+            rule(rand(size(rule)) < lambda) = 0;
+            if nargin < 4, cts = rand; end;
             otca = OuterTotalisticCellularAutomata(rule, grid, K, cts);
             
         end
