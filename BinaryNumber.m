@@ -62,8 +62,10 @@ classdef BinaryNumber
             max_generations = 100;
             population_size = 100;
             num_elites = 10;
+            num_new = 10;
             debug = true;
-            [best, fits] = ga.evolve(max_generations, population_size, num_elites, crossover_rate, mutation_rate, debug);
+            [best, fits] = ga.evolve(max_generations, population_size, ...
+                num_elites, num_new, crossover_rate, mutation_rate, debug);
 
             best.number
 

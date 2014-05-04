@@ -21,7 +21,8 @@ classdef GeneticAlgorithm < handle
        end
        
        % runs the GA and returns the best solution found
-       function [best, fits] = evolve(ga, max_generations, population_size, num_elites, crossover_rate, mutation_rate, debug)
+       function [best, fits] = evolve(ga, max_generations, population_size, ...
+               num_elites, num_new, crossover_rate, mutation_rate, debug)
            % Prepare session to run in parallel
            if ga.options{1}
                parpool('local', 2); 
@@ -61,8 +62,17 @@ classdef GeneticAlgorithm < handle
                    elites(i) = elites(i).copy();
                end
                
+               num_to_select = population_size - (num_elites + num_new);
+               
                % do fitness proportionate selection
-               ga.population = top_half_selection(ga, fit, population_size - num_elites);
+               ga.population = top_half_selection(ga, fit, num_to_select);
+               
+               % add new members
+               for i = 1:num_new
+                   ga.population(num_to_select + i) = ga.make_individual(); 
+               end
+               
+               % add elites
                ga.population((population_size - num_elites + 1):population_size) = elites; 
                
                % do crossover
