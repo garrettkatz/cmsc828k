@@ -21,7 +21,7 @@ classdef GeneticAlgorithm < handle
        end
        
        % runs the GA and returns the best solution found
-       function [best, maxes, means] = evolve(ga, max_generations, population_size, num_elites, crossover_rate, mutation_rate, debug)
+       function [best, fits] = evolve(ga, max_generations, population_size, num_elites, crossover_rate, mutation_rate, debug)
            % Prepare session to run in parallel
            if ga.options{1}
                parpool('local', 2); 
@@ -32,8 +32,7 @@ classdef GeneticAlgorithm < handle
            end
            
            ga.time = 0;
-           maxes = zeros(max_generations,1);
-           means = zeros(max_generations,1);
+           fits = zeros(population_size, max_generations);
            
            % initialize population
            for i = 1:population_size
@@ -46,14 +45,12 @@ classdef GeneticAlgorithm < handle
            
                % calculate fitness
                fit = evalFitness(ga, population_size);
-               
-               maxes(ga.time) = max(fit);
-               means(ga.time) = mean(fit);
+               fits(:,ga.time) = fit;
                
                if debug
                    disp(['Generation:  ', num2str(ga.time)]);
-                   disp(['Max fitness: ', num2str(maxes(ga.time))]);
-                   disp(['Avg fitness: ', num2str(means(ga.time))]);
+                   disp(['Max fitness: ', num2str(max(fit(:)))]);
+                   disp(['Avg fitness: ', num2str(mean(fit(:)))]);
                    disp(' ');
                end
                

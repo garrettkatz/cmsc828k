@@ -20,7 +20,7 @@ K = 4;
 options = {false}; 
 
 % initialize function handles for ga
-lambda = 0.3;
+lambda = 0.1;
 make_individual = @() FullRuleCellularAutomata.random(dims,K,lambda);
 crossover = @(par1,par2) FullRuleCellularAutomata.crossover(par1,par2);
 mutate = @(individual, rate) FullRuleCellularAutomata.mutate(individual, rate);
@@ -31,10 +31,10 @@ max_generations = 5;
 population_size = 5;
 num_elites = 1;
 crossover_rate = @(t) 1;
-mutation_rate = @(t) 0.95^t;
+mutation_rate = @(t) 0.5^t;
 tic
 %best = ga.evolve(max_generations, population_size, crossover_rate, mutation_rate);
-[best, maxes, means] = ga.evolve(max_generations, population_size, num_elites, crossover_rate, mutation_rate,true);
+[best, fits] = ga.evolve(max_generations, population_size, num_elites, crossover_rate, mutation_rate,true);
 toc
 
 % evaluate best's performance on mackey-glass

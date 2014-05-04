@@ -35,7 +35,7 @@ crossover_rate = @(t) 1;
 mutation_rate = @(t) 0.5^t;
 tic
 %best = ga.evolve(max_generations, population_size, crossover_rate, mutation_rate);
-[best, maxes, means] = ga.evolve(max_generations, population_size, num_elites, crossover_rate, mutation_rate,true);
+[best, fits] = ga.evolve(max_generations, population_size, num_elites, crossover_rate, mutation_rate,true);
 toc
 
 % evaluate best's performance on mackey-glass

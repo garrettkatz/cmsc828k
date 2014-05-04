@@ -203,7 +203,7 @@ classdef FullRuleCellularAutomata < handle
         
             rule = randi(K, [K^5, 1])-1;
             neighbors = FullRuleCellularAutomata.makeNeighbors(dims);
-            if nargin < 4, cts = 0; end;
+            if nargin < 4, cts = rand; end;
             frca = FullRuleCellularAutomata(rule, neighbors, K, cts);
             frca.rule(1) = 0; % quiescent stays quiescent
             % Control lambda
@@ -212,21 +212,26 @@ classdef FullRuleCellularAutomata < handle
         end
         % Gen ops
         function [child1, child2] = crossover(parent1, parent2)
-        % Cross-over rule tables, assuming equal K
+            % Cross-over rule tables, assuming equal K
             cutpt = randi(parent1.K-1);
             rule1 = [parent1.rule(1:cutpt); parent2.rule(cutpt+1:end)];
             rule2 = [parent2.rule(1:cutpt); parent1.rule(cutpt+1:end)];
             
+            % intermediate cts
+            cts = (parent1.cts+parent2.cts)/2;
+            
             % Wrap child rules in frca objects
-            child1 = FullRuleCellularAutomata(rule1, parent1.neighbors, parent1.K, parent1.cts);
-            child2 = FullRuleCellularAutomata(rule2, parent2.neighbors, parent2.K, parent2.cts);
+            child1 = FullRuleCellularAutomata(rule1, parent1.neighbors, parent1.K, cts);
+            child2 = FullRuleCellularAutomata(rule2, parent2.neighbors, parent2.K, cts);
             
         end
         function child = mutate(parent, mutation_rate)
             rule = parent.rule;
             mutations = rand(size(parent.rule)) < mutation_rate;
-            rule(mutations) = randi(parent.K-1, nnz(mutations), 1);
-            child = FullRuleCellularAutomata(rule, parent.neighbors, parent.K, parent.cts); % wrap
+            new_rules = rule(mutations) + randn(nnz(mutations), 1);
+            rule(mutations) = max(min(round(new_rules), parent.K-1),0);
+            cts = mutation_rate*rand + (1-mutation_rate)*parent.cts;
+            child = FullRuleCellularAutomata(rule, parent.neighbors, parent.K, cts); % wrap
         end
     end
 end

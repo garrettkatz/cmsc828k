@@ -268,7 +268,7 @@ classdef OuterTotalisticCellularAutomata < handle
         
             rule = randi(K+1, [K+1, 6*K+1])-1; % 6 to include input/feedback
             grid = OuterTotalisticCellularAutomata.makeGrid(dims);
-            if nargin < 3, cts = 0; end;
+            if nargin < 3, cts = rand; end;
             otca = OuterTotalisticCellularAutomata(rule, grid, K, cts);
             
         end
@@ -277,7 +277,7 @@ classdef OuterTotalisticCellularAutomata < handle
         
             rule = randi(K+1, [K+1, 6*K+1])-1; % 6 to include input/feedback
             grid = OuterTotalisticCellularAutomata.makeGrid(dims);
-            if nargin < 3, cts = 0.9; end;
+            if nargin < 3, cts = rand; end;
             otca = OuterTotalisticCellularAutomata(rule, grid, K, cts);
             
             % Change rule to "move toward neighborhood average"
@@ -308,9 +308,12 @@ classdef OuterTotalisticCellularAutomata < handle
                 child2 = [parent2.rule(:,1:col),parent1.rule(:,col+1:cols)];
             end
             
+            % Intermediate cts
+            cts = (parent1.cts + parent2.cts)/2;
+            
             % Wrap child rules in otca objects
-            child1 = OuterTotalisticCellularAutomata(child1, parent1.grid, parent1.K, parent1.cts);
-            child2 = OuterTotalisticCellularAutomata(child2, parent2.grid, parent2.K, parent2.cts);
+            child1 = OuterTotalisticCellularAutomata(child1, parent1.grid, parent1.K, cts);
+            child2 = OuterTotalisticCellularAutomata(child2, parent2.grid, parent2.K, cts);
             
         end
         function child = mutate(parent, mutation_rate)
@@ -319,7 +322,8 @@ classdef OuterTotalisticCellularAutomata < handle
             amount = floor(abs(normrnd(0,1,size(parent.rule))));
             child = parent.rule + (mutations .* signs .* amount);
             child = min(max(child, 0), parent.K); % force to legal states
-            child = OuterTotalisticCellularAutomata(child, parent.grid, parent.K, parent.cts); % wrap
+            cts = mutation_rate*rand + (1-mutation_rate)*parent.cts;
+            child = OuterTotalisticCellularAutomata(child, parent.grid, parent.K, cts); % wrap
         end
     end
 end
