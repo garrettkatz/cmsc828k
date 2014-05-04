@@ -22,14 +22,8 @@ X = 0.2*ones(size(T)); % constant bias
 dims = [20 20]; % grid dimensions
 K = 256;
 
-% Construct random cellular automata
-otca = OuterTotalisticCellularAutomata.random(dims,K);
-
-% Change rule to "move toward neighborhood average"
-states = repmat((0:K)', 1, 6*K+1); % 6 to include input/feedback
-sums = repmat(0:6*K, K+1, 1);
-rule = states - (states > (states+sums)/5) + (states < (states+sums)/5);
-otca.rule = min(rule,K);
+% Construct smooth cellular automata
+otca = OuterTotalisticCellularAutomata.smooth(dims, K, 0.5);
 
 % Wrap the cellular automata in a reservoir computer object for training
 % (initialize the readout matrix to all zeros)
@@ -55,7 +49,7 @@ t = 2001:4000;
 [A(:,t),Y(:,t)] = rc.stream(X(:,t));
 
 % Plot the results, play movie of cellular automata
-if false
+if true
     mx = max(A(:));
     for t = 1:10:size(A,2)
         subplot(3,1,1);

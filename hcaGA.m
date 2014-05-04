@@ -19,18 +19,19 @@ K = 4;
 options = {false}; 
 
 % initialize function handles for ga
-lambda = 0.3;
-make_individual = @() HeterogeneousCellularAutomata.random(dims,K,lambda);
+lambda = 0.5;
+cts = 0.75;
+make_individual = @() HeterogeneousCellularAutomata.random(dims,K,lambda,cts);
 crossover = @(par1,par2) HeterogeneousCellularAutomata.crossover(par1,par2);
 mutate = @(individual, rate) HeterogeneousCellularAutomata.mutate(individual, rate);
 
 % run ga
 ga = GeneticAlgorithm(make_individual, indvFit, crossover, mutate, options);
-max_generations = 5;
-population_size = 5;
+max_generations = 1;
+population_size = 1;
 num_elites = 1;
 crossover_rate = @(t) 1;
-mutation_rate = @(t) 0.95^t;
+mutation_rate = @(t) 0.0^t;
 tic
 %best = ga.evolve(max_generations, population_size, crossover_rate, mutation_rate);
 [best, maxes, means] = ga.evolve(max_generations, population_size, num_elites, crossover_rate, mutation_rate,true);

@@ -10,10 +10,11 @@ classdef FullRuleCellularAutomata < handle
         K; % number of states
         a; % column vector of unit activations
         readOut;
+        cts;
     end
     methods
-        function frca = FullRuleCellularAutomata(rule, neighbors, K)
-        % OuterTotalisticCellularAutomata constructs a cellular automata
+        function frca = FullRuleCellularAutomata(rule, neighbors, K, cts)
+        % FullRuleCellularAutomata constructs a cellular automata
         % object with the given rule table and dimensions.
         
             if nargin > 0 % check for object array construction
@@ -21,6 +22,8 @@ classdef FullRuleCellularAutomata < handle
                 frca.neighbors = neighbors;
                 frca.K = K;
                 frca.a = zeros(size(neighbors,1), 1);
+                if nargin < 4, cts = 0; end;
+                frca.cts = cts;
             end
             
         end
@@ -33,13 +36,14 @@ classdef FullRuleCellularAutomata < handle
             neighbors = frca.neighbors;
             K = frca.K;
             pows = K.^(0:4)'; % conversion to base K
+            cts = frca.cts;
             
             % Feedback (Map to node index)
             a(ceil(N*(tanh(b)+1)/2)) = K-1;
             % Get neighborhood states
-            neighborhood = reshape(a(neighbors(:)),N,5);
+            neighborhood = round(reshape(a(neighbors(:)),N,5));
             % Apply rules
-            a = rule(neighborhood*pows+1);
+            a = cts*a + (1-cts)*rule(neighborhood*pows+1);
             
             frca.a = a;
         end
@@ -54,6 +58,7 @@ classdef FullRuleCellularAutomata < handle
             K = frca.K;
             pows = K.^(0:4)'; % conversion to base K
             len = size(T,2);
+            cts = frca.cts;
 
             % Generate training data
             % Pre-allocate records
@@ -65,9 +70,9 @@ classdef FullRuleCellularAutomata < handle
                 % Feedback (Map to node index)
                 a(ceil(N*(tanh(T(:,t))+1)/2)) = K-1;
                 % Get neighborhood states
-                neighborhood = reshape(a(neighbors(:)),N,5);
+                neighborhood = round(reshape(a(neighbors(:)),N,5));
                 % Apply rules
-                a = rule(neighborhood*pows+1);
+                a = cts*a + (1-cts)*rule(neighborhood*pows+1);
             end
 
             % Ridge regression on readout
@@ -91,9 +96,9 @@ classdef FullRuleCellularAutomata < handle
                 % Feedback
                 a(ceil(N*(tanh(y)+1)/2)) = 1;
                 % Get neighborhood states
-                neighborhood = reshape(a(neighbors(:)),N,5);
+                neighborhood = round(reshape(a(neighbors(:)),N,5));
                 % Apply rules
-                a = rule(neighborhood*pows+1);
+                a = cts*a + (1-cts)*rule(neighborhood*pows+1);
                 % Output
                 y = readOut*A(:,t);
             end
@@ -112,6 +117,7 @@ classdef FullRuleCellularAutomata < handle
             clone.neighbors = frca.neighbors;
             clone.K = frca.K;
             clone.a = frca.a;
+            clone.cts = frca.cts;
         end
         function check(frca, X, T, dims, step, framerate)
         % check visualizes performance on Mackey-glass
@@ -125,6 +131,7 @@ classdef FullRuleCellularAutomata < handle
             pows = K.^(0:4)'; % conversion to base K
             len = size(T,2);
             readOut = frca.readOut;
+            cts = frca.cts;
             
             % Re-stream using read-out
             Y = zeros(size(T));
@@ -139,9 +146,9 @@ classdef FullRuleCellularAutomata < handle
                 % Feedback
                 a(ceil(N*(tanh(y)+1)/2)) = 1;
                 % Get neighborhood states
-                neighborhood = reshape(a(neighbors(:)),N,5);
+                neighborhood = round(reshape(a(neighbors(:)),N,5));
                 % Apply rules
-                a = rule(neighborhood*pows+1);
+                a = cts*a + (1-cts)*rule(neighborhood*pows+1);
                 % Output
                 y = readOut*A(:,t);
             end
@@ -191,12 +198,13 @@ classdef FullRuleCellularAutomata < handle
             neighbors = neighbors + 1;
             
         end
-        function frca = random(dims,K,lambda)
+        function frca = random(dims,K,lambda,cts)
         % random constructs a randomized FullRuleCellularAutomata.
         
             rule = randi(K, [K^5, 1])-1;
             neighbors = FullRuleCellularAutomata.makeNeighbors(dims);
-            frca = FullRuleCellularAutomata(rule, neighbors, K);
+            if nargin < 4, cts = 0; end;
+            frca = FullRuleCellularAutomata(rule, neighbors, K, cts);
             frca.rule(1) = 0; % quiescent stays quiescent
             % Control lambda
             frca.rule(rand(size(frca.rule)) > lambda) = 0;
@@ -210,15 +218,15 @@ classdef FullRuleCellularAutomata < handle
             rule2 = [parent2.rule(1:cutpt); parent1.rule(cutpt+1:end)];
             
             % Wrap child rules in frca objects
-            child1 = FullRuleCellularAutomata(rule1, parent1.neighbors, parent1.K);
-            child2 = FullRuleCellularAutomata(rule2, parent2.neighbors, parent2.K);
+            child1 = FullRuleCellularAutomata(rule1, parent1.neighbors, parent1.K, parent1.cts);
+            child2 = FullRuleCellularAutomata(rule2, parent2.neighbors, parent2.K, parent2.cts);
             
         end
         function child = mutate(parent, mutation_rate)
             rule = parent.rule;
             mutations = rand(size(parent.rule)) < mutation_rate;
             rule(mutations) = randi(parent.K-1, nnz(mutations), 1);
-            child = FullRuleCellularAutomata(rule, parent.neighbors, parent.K); % wrap
+            child = FullRuleCellularAutomata(rule, parent.neighbors, parent.K, parent.cts); % wrap
         end
     end
 end
