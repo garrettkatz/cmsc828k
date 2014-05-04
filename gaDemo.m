@@ -21,21 +21,23 @@ K = 256;
 options = {false}; 
 
 % initialize function handles for ga
-%make_individual = @() OuterTotalisticCellularAutomata.random(dims,K);
-make_individual = @() OuterTotalisticCellularAutomata.smooth(dims,K);
+%make_individual = @() OuterTotalisticCellularAutomata.random(dims,K,0.3);
+make_individual = @() OuterTotalisticCellularAutomata.smooth(dims,K,0.3);
 crossover = @(par1,par2) OuterTotalisticCellularAutomata.crossover(par1,par2);
-mutate = @(individual, rate) OuterTotalisticCellularAutomata.mutate(individual, rate);
+%mutate = @(individual, rate) OuterTotalisticCellularAutomata.mutate(individual, rate);
+mutate = @(individual, rate) OuterTotalisticCellularAutomata.gaussMutate(individual, rate);
 
 % run ga
 ga = GeneticAlgorithm(make_individual, indvFit, crossover, mutate, options);
-max_generations = 5;
-population_size = 5;
+max_generations = 10;
+population_size = 10;
 num_elites = 1;
+num_new = 1;
 crossover_rate = @(t) 1;
-mutation_rate = @(t) 0.5^t;
+mutation_rate = @(t) 0.5*(0.95^t);
 tic
 %best = ga.evolve(max_generations, population_size, crossover_rate, mutation_rate);
-[best, fits] = ga.evolve(max_generations, population_size, num_elites, crossover_rate, mutation_rate,true);
+[best, fits] = ga.evolve(max_generations, population_size, num_elites, num_new, crossover_rate, mutation_rate,true);
 toc
 
 % evaluate best's performance on mackey-glass
