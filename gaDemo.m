@@ -22,15 +22,16 @@ options = {false};
 
 % initialize function handles for ga
 %make_individual = @() OuterTotalisticCellularAutomata.random(dims,K,0.3);
-make_individual = @() OuterTotalisticCellularAutomata.smooth(dims,K,0.3);
-crossover = @(par1,par2) OuterTotalisticCellularAutomata.crossover(par1,par2);
+%make_individual = @() OuterTotalisticCellularAutomata.smooth(dims,K,0.3);
+make_individual = @() OuterTotalisticCellularAutomata.gauss(dims,K);
+crossover = @(par1,par2) OuterTotalisticCellularAutomata.smoothCrossover(par1,par2);
 %mutate = @(individual, rate) OuterTotalisticCellularAutomata.mutate(individual, rate);
 mutate = @(individual, rate) OuterTotalisticCellularAutomata.gaussMutate(individual, rate);
 
 % run ga
 ga = GeneticAlgorithm(make_individual, indvFit, crossover, mutate, options);
-max_generations = 10;
-population_size = 10;
+max_generations = 5;
+population_size = 5;
 num_elites = 1;
 num_new = 1;
 crossover_rate = @(t) 1;
@@ -41,11 +42,10 @@ tic
 toc
 
 % evaluate best's performance on mackey-glass
-% N = numel(best.a);
-% ext = randperm(N, 20); % indices of external-signal-receiving units
-% readIn = sparse(ext(1:10), 1, 1, N, 1); % 1st 10 for input
-% readOut = zeros(1, N);
-% readBack = sparse(ext(11:20), 1, 1, N, 1); % last 10 for feedback
-% rcMackey = ReservoirComputer(best, readIn, readOut, readBack);
-% [trainErr, testErr, ~] = Fitness.evalMackey(rcMackey, true)
 fit = indvFit(best)
+best.check(X,T,[20 20],100,1/48)
+plt = repmat(1:max_generations,size(fits,1),1);
+scatter(plt(:),fits(:));
+hold on
+plot(mean(fits,1),'r+');
+hold off
