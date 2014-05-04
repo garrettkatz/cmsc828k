@@ -21,15 +21,15 @@ K = 256;
 options = {true}; 
 
 % initialize function handles for ga
-%make_individual = @() OuterTotalisticCellularAutomata.random(dims,K);
-make_individual = @() OuterTotalisticCellularAutomata.smooth(dims,K);
+make_individual = @() OuterTotalisticCellularAutomata.random(dims,K);
+%make_individual = @() OuterTotalisticCellularAutomata.smooth(dims,K);
 crossover = @(par1,par2) OuterTotalisticCellularAutomata.crossover(par1,par2);
 mutate = @(individual, rate) OuterTotalisticCellularAutomata.mutate(individual, rate);
 
 % run ga
 ga = GeneticAlgorithm(make_individual, indvFit, crossover, mutate, options);
-max_generations = 10;
-population_size = 50;
+max_generations = 100;
+population_size = 500;
 num_elites = 5;
 crossover_rate = @(t) 0.8;
 mutation_rate = @(t) 0.1*exp(-t/50);

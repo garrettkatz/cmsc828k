@@ -56,10 +56,10 @@ classdef GeneticAlgorithm < handle
                %means(ga.time) = mean(fit);
                
                if debug
-                   disp(['Generation:  ', num2str(ga.time)])
-                   disp(['Max fitness: ', num2str(max(fvals(ga.time,:)))])
-                   disp(['Avg fitness: ', num2str(mean(fvals(ga.time,:)))])
-                   disp(['Eval time: ', num2str(fit_time)])
+                   disp(['Generation:  ', num2str(ga.time)]);
+                   disp(['Max fitness: ', num2str(max(fvals(ga.time,:)))]);
+                   disp(['Avg fitness: ', num2str(mean(fvals(ga.time,:)))]);
+                   disp(['Eval time: ', num2str(fit_time)]);
                    disp(' ');
                end
                
