@@ -227,7 +227,7 @@ classdef HeterogeneousCellularAutomata < handle
         function child = mutate(parent, mutation_rate)
             child = parent.copy();
             mutations = rand(size(parent.rules)) < mutation_rate;
-            new_rules = rule(mutations) + randn(nnz(mutations), 1);
+            new_rules = child.rules(mutations) + randn(nnz(mutations), 1);
             child.rules(mutations) = max(min(round(new_rules), parent.K-1),0);
             child.cts = mutation_rate*rand + (1-mutation_rate)*parent.cts;
         end
