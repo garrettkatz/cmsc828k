@@ -21,7 +21,7 @@ classdef GeneticAlgorithm < handle
        end
        
        % runs the GA and returns the best solution found
-       function [bests, fits] = evolve(ga, max_generations, population_size, ...
+       function [bests, fits, summaries] = evolve(ga, max_generations, population_size, ...
                num_elites, num_new, crossover_rate, mutation_rate, debug)
            % Prepare session to run in parallel
            if ga.options{1}
@@ -38,6 +38,9 @@ classdef GeneticAlgorithm < handle
            %maxes = zeros(max_generations,1);
            %means = zeros(max_generations,1);
            
+           % Record lambdas, weighted lambdas, and cty parameters
+           summaries = zeros(population_size, max_generations, 3);
+           
            % initialize population
            for i = 1:population_size
                ga.population(i) = ga.make_individual();
@@ -53,6 +56,14 @@ classdef GeneticAlgorithm < handle
                fit_time = toc(tfit);
           
                fits(:,ga.time) = fit;
+               
+               % Record summary info
+               for i = 1:population_size
+                   indv = ga.population(i);
+                   summaries(i,ga.time,1) = nnz(indv.rule)/numel(indv.rule); % lambda
+                   summaries(i,ga.time,2) = mean(indv.rule(:))/indv.K; % "weighted" (just avg)
+                   summaries(i,ga.time,3) = indv.cts; % continuity param
+               end
                
                 % find the best individual in the population
                [~, best_idx] = max(fits(:,ga.time));
