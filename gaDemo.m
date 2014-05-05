@@ -30,12 +30,12 @@ options = {true};
 make_individual = @() OuterTotalisticCellularAutomata.gauss(dims,K);
 crossover = @(par1,par2) OuterTotalisticCellularAutomata.smoothCrossover(par1,par2);
 %mutate = @(individual, rate) OuterTotalisticCellularAutomata.mutate(individual, rate);
-mutate = @(individual, rate) OuterTotalisticCellularAutomata.gaussMutate(individual, rate);
+mutate = @(individual, rate) OuterTotalisticCellularAutomata.gaussMutate(individual, rate, true); % true for cts mutation
 
 % run ga
 ga = GeneticAlgorithm(make_individual, indvFit, crossover, mutate, options);
-max_generations = 50;
-population_size = 10;
+max_generations = 3;
+population_size = 5;
 num_elites = 1;
 num_new = 1;
 crossover_rate = @(t) 0.8;
@@ -43,15 +43,27 @@ mutation_rate = @(t) 0.1*exp(-t/(0.5*max_generations));
 tic
 
 disp('Starting evolution...')
-[bests, fits] = ga.evolve(max_generations, population_size, num_elites, num_new, crossover_rate, mutation_rate,true);
+[bests, fits, summaries] = ga.evolve(max_generations, population_size, num_elites, num_new, crossover_rate, mutation_rate,true);
 toc
 best = bests{end};
 
-% evaluate best's performance on mackey-glass
-fit = indvFit(best);
-best.check(X,T,[20 20],100,1/48)
+% Compare fitness against time
+subplot(1,2,1);
 plt = repmat(1:max_generations,size(fits,1),1);
 scatter(plt(:),fits(:));
 hold on
-plot(mean(fits,1),'r+');
+plot(mean(fits,1),'r-+');
 hold off
+
+% compare lambdas/cts against fitness
+lambdas = summaries(:,:,1);
+wlambdas = summaries(:,:,2);
+ctss = summaries(:,:,3);
+subplot(1,2,2);
+plot(fits(:),lambdas(:),'ro',fits(:),wlambdas(:),'gd',fits(:),ctss(:),'b+');
+legend('lambda','wlambda','cts');
+
+% evaluate best's performance on mackey-glass
+fit = indvFit(best);
+figure()
+best.check(X,T,[20 20],100,1/48);

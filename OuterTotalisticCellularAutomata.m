@@ -412,15 +412,24 @@ classdef OuterTotalisticCellularAutomata < handle
             j_c = randi(sz(2));
             rule = 1./(1+exp(-width*(i-i_c))).*1./((1+exp(-width*(j-j_c))));
         end
-        function child = gaussMutate(parent, mutation_rate)
+        function child = gaussMutate(parent, mutation_rate, mutate_cts)
             
+            % Mutate rule with gaussians
             num_mutators = 10;
             rule = parent.rule;
             for m = 1:num_mutators
                 rule = rule + OuterTotalisticCellularAutomata.gaussRule(size(rule), parent.K/2*mutation_rate, parent.K/5*mutation_rate);
             end
             rule = min(max(round(rule),0),parent.K);
-            child = OuterTotalisticCellularAutomata(rule, parent.grid, parent.K, parent.cts); % wrap
+            
+            % Mutate continuity if requested (default yes)
+            cts = parent.cts;
+            if nargin < 3, mutate_cts = true; end;
+            if mutate_cts
+                cts = mutation_rate*rand + (1-mutation_rate)*cts;
+            end
+            
+            child = OuterTotalisticCellularAutomata(rule, parent.grid, parent.K, cts); % wrap
             
         end
     end
