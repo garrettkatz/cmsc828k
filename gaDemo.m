@@ -34,12 +34,12 @@ mutate = @(individual, rate) OuterTotalisticCellularAutomata.gaussMutate(individ
 
 % run ga
 ga = GeneticAlgorithm(make_individual, indvFit, crossover, mutate, options);
-max_generations = 3;
-population_size = 5;
-num_elites = 1;
-num_new = 1;
+max_generations = 5;%500;
+population_size = 5;%100;
+num_elites = 1;%5;
+num_new = 1;%5;
 crossover_rate = @(t) 0.8;
-mutation_rate = @(t) 0.1*exp(-t/(0.5*max_generations));
+mutation_rate = @(t) 0.5*(0.975^t);
 tic
 
 disp('Starting evolution...')
