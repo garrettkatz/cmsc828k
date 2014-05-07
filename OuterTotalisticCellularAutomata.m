@@ -37,7 +37,7 @@ classdef OuterTotalisticCellularAutomata < handle
                 otca.readBack = readBack;
                 if nargin < 4, cts = 0; end;
                 otca.cts = cts;
-                otca.lambda = 1-(nnz(otca.rule)/numel(otca.rule));
+                otca.lambda = 1-(nnz(rule)/numel(rule));
             end
             
         end

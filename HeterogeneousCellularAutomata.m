@@ -2,25 +2,27 @@ classdef HeterogeneousCellularAutomata < handle
 % A HeterogenousCellularAutomata object is like FullRuleCellularAutomata,
 % except a single CA can have different rule sets for different nodes.
     properties
-        rules; % rules(i,j) is new state for unit j with neighborhood configuration i
+        rule; % rule(i,j) is new state for unit j with neighborhood configuration i
         neighbors; % N x 5 neighbor indices (including self)
         K; % number of states
         a; % column vector of unit activations
         readOut; % readout connections
         cts;
+        lambda;
     end
     methods
-        function hca = HeterogeneousCellularAutomata(rules, neighbors, K, cts)
+        function hca = HeterogeneousCellularAutomata(rule, neighbors, K, cts)
         % HeterogeneousCellularAutomata constructs a cellular automata
         % object with the given rule table and dimensions.
         
             if nargin > 0 % check for object array construction
-                hca.rules = rules;
+                hca.rule = rule;
                 hca.neighbors = neighbors;
                 hca.K = K;
                 hca.a = zeros(size(neighbors,1), 1);
                 if nargin < 4, cts = 0; end;
                 hca.cts = cts;
+                hca.lambda = 1-(nnz(rule)/numel(rule));
             end
             
         end
@@ -29,7 +31,7 @@ classdef HeterogeneousCellularAutomata < handle
             % Localize variables
             a = hca.a;
             N = numel(a);
-            rules = hca.rules;
+            rule = hca.rule;
             neighbors = hca.neighbors;
             K = hca.K;
             pows = K.^(0:4)'; % conversion to base K
@@ -39,9 +41,9 @@ classdef HeterogeneousCellularAutomata < handle
             a(ceil(N*(tanh(b)+1)/2)) = K-1;
             % Get neighborhood states
             neighborhoods = round(reshape(a(neighbors(:)),N,5));
-            % Apply rules
+            % Apply rule
             idx = neighborhoods*pows + (K^5)*(0:numel(a)-1)' + 1; 
-            a = cts*a + (1-cts)*rules(idx);
+            a = cts*a + (1-cts)*rule(idx);
             hca.a = a;
         end
         function [fit, Y] = fitness(hca, X, T)
@@ -50,7 +52,7 @@ classdef HeterogeneousCellularAutomata < handle
             % Localize variables
             a = zeros(size(hca.a));
             N = numel(a);
-            rules = hca.rules;
+            rule = hca.rule;
             neighbors = hca.neighbors;
             K = hca.K;
             pows = K.^(0:4)'; % conversion to base K
@@ -64,13 +66,14 @@ classdef HeterogeneousCellularAutomata < handle
             for t = 1:len
                 % Record activations
                 A(:,t) = a;
-                % Feedback (Map to node index)
+                % Input + Feedback (Map to node index)
+                a(ceil(N*(tanh(X(:,t))+1)/2)) = K-1;
                 a(ceil(N*(tanh(T(:,t))+1)/2)) = K-1;
                 % Get neighborhood states
                 neighborhoods = round(reshape(a(neighbors(:)),N,5));
-                % Apply rules
-                idx = neighborhoods*pows + (K^5)*(0:numel(a)-1)' + 1; 
-                a = cts*a + (1-cts)*rules(idx); % A(:,t+1) = fun( A(:,t), T(:,t) )
+                % Apply rule
+                idx = neighborhoods*pows + (K^5)*(0:numel(a)-1)' + 1;
+                a = cts*a + (1-cts)*rule(idx); % A(:,t+1) = fun( A(:,t), T(:,t) )
             end
 
             % Ridge regression on readout
@@ -91,13 +94,14 @@ classdef HeterogeneousCellularAutomata < handle
                 Y(:,t) = y;
                 % Force
                 if t < len/2, y = T(:,t); end;
-                % Feedback (Map to node index) for next round
+                % Input + Feedback (Map to node index)
+                a(ceil(N*(tanh(X(:,t))+1)/2)) = K-1;
                 a(ceil(N*(tanh(y)+1)/2)) = K-1;
                 % Get neighborhood states
                 neighborhoods = round(reshape(a(neighbors(:)),N,5));
-                % Apply rules
+                % Apply rule
                 idx = neighborhoods*pows + (K^5)*(0:numel(a)-1)' + 1; 
-                a = cts*a + (1-cts)*rules(idx); % A(:,t+1) = fun( A(:,t), T(:,t) )
+                a = cts*a + (1-cts)*rule(idx); % A(:,t+1) = fun( A(:,t), T(:,t) )
                 % Output
                 y = readOut*A(:,t); % Y(:,t+1) = fun( A(:,t) )
             end
@@ -112,7 +116,7 @@ classdef HeterogeneousCellularAutomata < handle
         end
         function clone = copy(hca)
             clone = HeterogeneousCellularAutomata;
-            clone.rules = hca.rules;
+            clone.rule = hca.rule;
             clone.neighbors = hca.neighbors;
             clone.K = hca.K;
             clone.a = hca.a;
@@ -124,7 +128,7 @@ classdef HeterogeneousCellularAutomata < handle
             % Localize variables
             a = zeros(size(hca.a));
             N = numel(a);
-            rules = hca.rules;
+            rule = hca.rule;
             neighbors = hca.neighbors;
             K = hca.K;
             pows = K.^(0:4)'; % conversion to base K
@@ -142,13 +146,14 @@ classdef HeterogeneousCellularAutomata < handle
                 Y(:,t) = y;
                 % Force
                 if t < len/2, y = T(:,t); end;
-                % Feedback (Map to node index) for next round
+                % Input + Feedback (Map to node index)
+                a(ceil(N*(tanh(X(:,t))+1)/2)) = K-1;
                 a(ceil(N*(tanh(y)+1)/2)) = K-1;
                 % Get neighborhood states
                 neighborhoods = round(reshape(a(neighbors(:)),N,5));
-                % Apply rules
+                % Apply rule
                 idx = neighborhoods*pows + (K^5)*(0:numel(a)-1)' + 1; 
-                a = cts*a + (1-cts)*rules(idx); % A(:,t+1) = fun( A(:,t), T(:,t) )
+                a = cts*a + (1-cts)*rule(idx); % A(:,t+1) = fun( A(:,t), T(:,t) )
                 % Output
                 y = readOut*A(:,t); % Y(:,t+1) = fun( A(:,t) )
             end
@@ -200,35 +205,86 @@ classdef HeterogeneousCellularAutomata < handle
         function hca = random(dims, K, lambda, cts)
         % random constructs a randomized HeterogeneousCellularAutomata.
         
-            rules = randi(K, [K^5, prod(dims)])-1;
+            rule = randi(K, [K^5, prod(dims)])-1;
             neighbors = HeterogeneousCellularAutomata.makeNeighbors(dims);
             if nargin < 4, cts = rand; end;
-            hca = HeterogeneousCellularAutomata(rules, neighbors, K, cts);
-            hca.rules(1,:) = 0; % quiescent stays quiescent
+            hca = HeterogeneousCellularAutomata(rule, neighbors, K, cts);
+            hca.rule(1,:) = 0; % quiescent stays quiescent
             % Control lambda
-            hca.rules(rand(size(hca.rules)) > lambda) = 0;
+            hca.rule(rand(size(hca.rule)) > lambda) = 0;
+
+        end
+        function hca = gauss(dims, K, cts)
+        % gauss constructs a gauss-rule HeterogeneousCellularAutomata.
+        
+            persistent neighbors;
+            if isempty(neighbors)
+                neighbors = HeterogeneousCellularAutomata.makeNeighbors(dims);
+            end
+            if nargin < 3, cts = rand; end;
+            num_guass = 10;
+            rule = K/2*ones([K^5, prod(dims)]);
+            for n = 1:num_guass
+                rule = rule + OuterTotalisticCellularAutomata.gaussRule(size(rule), K/2, min(size(rule)));
+            end
+            rule = min(max(rule,0),K-1);
+
+            hca = HeterogeneousCellularAutomata(rule, neighbors, K, cts);
 
         end
         % Gen ops
+        function [child1, child2] = smoothCrossover(parent1, parent2)
+            
+            sr = OuterTotalisticCellularAutomata.sigRule(size(parent1.rule));
+            rule1 = sr.*parent1.rule + (1-sr).*parent2.rule;
+            rule1 = min(max(round(rule1),0),parent1.K);
+            rule2 = sr.*parent2.rule + (1-sr).*parent1.rule;
+            rule2 = min(max(round(rule2),0),parent1.K);
+            
+            % Wrap child rule in otca objects
+            child1 = HeterogeneousCellularAutomata(rule1, parent1.neighbors, parent1.K, parent1.cts);
+            child2 = HeterogeneousCellularAutomata(rule2, parent2.neighbors, parent2.K, parent2.cts);
+            
+        end
+        function child = gaussMutate(parent, mutation_rate, mutate_cts)
+            
+            % Mutate rule with gaussians
+            num_mutators = 10;
+            rule = parent.rule;
+            for m = 1:num_mutators
+                rule = rule + OuterTotalisticCellularAutomata.gaussRule(size(rule), parent.K/2*mutation_rate, parent.K/5*mutation_rate);
+            end
+            rule = min(max(round(rule),0),parent.K);
+            
+            % Mutate continuity if requested (default yes)
+            cts = parent.cts;
+            if nargin < 3, mutate_cts = true; end;
+            if mutate_cts
+                cts = mutation_rate*rand + (1-mutation_rate)*cts;
+            end
+            
+            child = HeterogeneousCellularAutomata(rule, parent.neighbors, parent.K, cts); % wrap
+            
+        end
         function [child1, child2] = crossover(parent1, parent2)
             % Cross-over units
             cutpt = randi(numel(parent1.a)-1);
-            rules1 = [parent1.rules(:,1:cutpt), parent2.rules(:,cutpt+1:end)];
-            rules2 = [parent2.rules(:,1:cutpt), parent1.rules(:,cutpt+1:end)];
+            rule1 = [parent1.rule(:,1:cutpt), parent2.rule(:,cutpt+1:end)];
+            rule2 = [parent2.rule(:,1:cutpt), parent1.rule(:,cutpt+1:end)];
 
             % intermediate cts
             cts = (parent1.cts+parent2.cts)/2;
             
-            % Wrap child rules in frca objects
-            child1 = HeterogeneousCellularAutomata(rules1, parent1.neighbors, parent1.K, cts);
-            child2 = HeterogeneousCellularAutomata(rules2, parent2.neighbors, parent2.K, cts);
+            % Wrap child rule in frca objects
+            child1 = HeterogeneousCellularAutomata(rule1, parent1.neighbors, parent1.K, cts);
+            child2 = HeterogeneousCellularAutomata(rule2, parent2.neighbors, parent2.K, cts);
             
         end
         function child = mutate(parent, mutation_rate)
             child = parent.copy();
-            mutations = rand(size(parent.rules)) < mutation_rate;
-            new_rules = child.rules(mutations) + randn(nnz(mutations), 1);
-            child.rules(mutations) = max(min(round(new_rules), parent.K-1),0);
+            mutations = rand(size(parent.rule)) < mutation_rate;
+            new_rule = child.rule(mutations) + randn(nnz(mutations), 1);
+            child.rule(mutations) = max(min(round(new_rule), parent.K-1),0);
             child.cts = mutation_rate*rand + (1-mutation_rate)*parent.cts;
         end
     end
