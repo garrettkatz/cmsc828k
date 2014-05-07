@@ -301,6 +301,7 @@ classdef OuterTotalisticCellularAutomata < handle
         
             persistent grid
             if (isempty(grid))
+                disp('Building neighborhood grid...')
                 grid = OuterTotalisticCellularAutomata.makeGrid(dims);
                 %grid = OuterTotalisticCellularAutomata.makeGridPeriodic(dims);
             end

@@ -1,5 +1,6 @@
 % Cleanup variables and figures
 clear;
+clear functions; %delete persistent variables
 close;
 
 % Make single Mackey
