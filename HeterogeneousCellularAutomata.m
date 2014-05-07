@@ -222,12 +222,12 @@ classdef HeterogeneousCellularAutomata < handle
                 neighbors = HeterogeneousCellularAutomata.makeNeighbors(dims);
             end
             if nargin < 3, cts = rand; end;
-            num_guass = 10;
+            num_guass = 64;
             rule = K/2*ones([K^5, prod(dims)]);
             for n = 1:num_guass
-                rule = rule + OuterTotalisticCellularAutomata.gaussRule(size(rule), K/2, min(size(rule)));
+                rule = rule + OuterTotalisticCellularAutomata.gaussRule(size(rule), K/2, min(size(rule))/25);
             end
-            rule = min(max(rule,0),K-1);
+            rule = min(max(round(rule),0),K-1);
 
             hca = HeterogeneousCellularAutomata(rule, neighbors, K, cts);
 
@@ -237,9 +237,9 @@ classdef HeterogeneousCellularAutomata < handle
             
             sr = OuterTotalisticCellularAutomata.sigRule(size(parent1.rule));
             rule1 = sr.*parent1.rule + (1-sr).*parent2.rule;
-            rule1 = min(max(round(rule1),0),parent1.K);
+            rule1 = min(max(round(rule1),0),parent1.K-1);
             rule2 = sr.*parent2.rule + (1-sr).*parent1.rule;
-            rule2 = min(max(round(rule2),0),parent1.K);
+            rule2 = min(max(round(rule2),0),parent1.K-1);
             
             % Wrap child rule in otca objects
             child1 = HeterogeneousCellularAutomata(rule1, parent1.neighbors, parent1.K, parent1.cts);
@@ -252,9 +252,9 @@ classdef HeterogeneousCellularAutomata < handle
             num_mutators = 10;
             rule = parent.rule;
             for m = 1:num_mutators
-                rule = rule + OuterTotalisticCellularAutomata.gaussRule(size(rule), parent.K/2*mutation_rate, parent.K/5*mutation_rate);
+                rule = rule + OuterTotalisticCellularAutomata.gaussRule(size(rule), parent.K/2*mutation_rate, min(size(rule))/5*mutation_rate);
             end
-            rule = min(max(round(rule),0),parent.K);
+            rule = min(max(round(rule),0),parent.K-1);
             
             % Mutate continuity if requested (default yes)
             cts = parent.cts;

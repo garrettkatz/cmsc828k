@@ -31,8 +31,8 @@ mutate = @(individual, rate) HeterogeneousCellularAutomata.gaussMutate(individua
 
 % run ga
 ga = GeneticAlgorithm(make_individual, indvFit, crossover, mutate, options);
-max_generations = 5;%500;
-population_size = 5;%100;
+max_generations = 2;%500;
+population_size = 10;%100;
 num_elites = 1;%5;
 num_new = 1;%5;
 crossover_rate = @(t) 0.8;
