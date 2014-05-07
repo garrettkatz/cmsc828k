@@ -38,8 +38,8 @@ classdef GeneticAlgorithm < handle
            %maxes = zeros(max_generations,1);
            %means = zeros(max_generations,1);
            
-           % Record lambdas, weighted lambdas, and cty parameters
-           summaries = zeros(population_size, max_generations, 3);
+           % Record lambdas, weighted lambdas, cty parameters, keys, parent1, parent2
+           summaries = zeros(population_size, max_generations, 6);
            
            % initialize population
            for i = 1:population_size
@@ -64,6 +64,8 @@ classdef GeneticAlgorithm < handle
                    summaries(i,ga.time,2) = mean(indv.rule(:))/indv.K; % "weighted" (just avg)
                    summaries(i,ga.time,3) = indv.cts; % continuity param
                end
+               keys = population_size*(ga.time-1) + (1:population_size);
+               summaries(:,ga.time,4) = keys; % for tracing ancestry
                
                 % find the best individual in the population
                [~, best_idx] = max(fits(:,ga.time));
@@ -80,6 +82,7 @@ classdef GeneticAlgorithm < handle
                % get elites
                [~, idxs] = sort(fit,'descend');
                elites = ga.population(idxs(1:num_elites));
+               elite_keys = keys(idxs(1:num_elites));
                for i = 1:num_elites
                    elites(i) = elites(i).copy();
                end
@@ -87,24 +90,32 @@ classdef GeneticAlgorithm < handle
                num_to_select = population_size - (num_elites + num_new);
                
                % do fitness proportionate selection
-               ga.population = top_half_selection(ga, fit, num_to_select);
+               [ga.population, par_keys] = top_half_selection(ga, fit, num_to_select);
                
                % add new members
                for i = 1:num_new
-                   ga.population(num_to_select + i) = ga.make_individual(); 
+                   ga.population(num_to_select + i) = ga.make_individual();
+                   par_keys(num_to_select + i) = 0;
                end
-               ga.population = ga.population(randperm(population_size - num_elites));
+               perm = randperm(population_size - num_elites);
+               ga.population = ga.population(perm);
+               par_keys = par_keys(perm);
                
                % add elites
                ga.population((population_size - num_elites + 1):population_size) = elites; 
-               
+               par_keys((population_size - num_elites + 1):population_size) = elite_keys; 
+
                % do crossover
+               summaries(:,ga.time,5) = par_keys;
+               summaries(:,ga.time,6) = par_keys;
                for i = 1:(population_size - num_elites)
                   if rand < crossover_rate(ga.time) / 2
                       r = ceil(rand * (population_size - num_elites));
                       [child1, child2] = ga.crossover(ga.population(i), ga.population(r));
                       ga.population(i) = child1;
                       ga.population(r) = child2;
+                      summaries(i,ga.time,5:6) = [par_keys(i), par_keys(r)]; % for tracing ancestry
+                      summaries(r,ga.time,5:6) = [par_keys(i), par_keys(r)]; % for tracing ancestry
                   end
                end
                
@@ -138,15 +149,18 @@ classdef GeneticAlgorithm < handle
        end
        
        % selects the top half of the population
-       function parents = top_half_selection(ga, fit, num_to_select)
+       function [parents, par_keys] = top_half_selection(ga, fit, num_to_select)
            [~, idxs] = sort(fit,'descend');
            half = floor(num_to_select / 2);
            parents = [ga.population(idxs(1:half));ga.population(idxs(1:half))];
+           pre_keys = [idxs(1:half);idxs(1:half)];
            if mod(num_to_select, 2)
               parents(num_to_select) = ga.population(half + 1); 
+              pre_keys(num_to_select) = half+1;
            end
-           
-           parents = parents(randperm(num_to_select));
+           perm = randperm(num_to_select);
+           parents = parents(perm);
+           par_keys = numel(fit)*(ga.time-1) + pre_keys(perm);
        end
        
        % creates a fitness proportionate list of parents
@@ -173,5 +187,29 @@ classdef GeneticAlgorithm < handle
            end
        end
        
+   end
+   methods(Static=true)
+       function traceAncestry(fits, summaries)
+            hold on
+            population_size = size(summaries,1);
+            for t = 2:size(summaries,2)
+                for i = 1:population_size
+                    parkey = summaries(i,t,5);
+                    if parkey>0
+                        paridx = mod(parkey, population_size)+1;
+                        plot([t-1,t],[fits(paridx,t-1), fits(i,t)],'b-');
+                    end
+                    parkey = summaries(i,t,6);
+                    if parkey>0
+                        paridx = mod(parkey, population_size)+1;
+                        plot([t-1,t],[fits(paridx,t-1), fits(i,t)],'b-');
+                    else
+                        plot(t,fits(i,t),'go');
+                    end
+                end
+            end
+            hold off
+
+       end
    end
 end
