@@ -1,4 +1,4 @@
-function animateRuleTable(rules, fps, figh)
+function animateRuleTable(rules, fps, fig_h)
 
 if (nargin < 3)
   fig_h = gcf;

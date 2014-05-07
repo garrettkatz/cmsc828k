@@ -1,5 +1,6 @@
-%Call this first, with your desired parameters
-%Then call animateRuleTable(rules(i,:), frames_per_second)
+% - Call this first, with your desired parameters
+% - Then call animateRuleTable(rules(i,:), frames_per_second)
+%   where i is an element of 1:Nidv
 
 clear
 clear functions
