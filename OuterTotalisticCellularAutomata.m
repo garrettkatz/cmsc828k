@@ -163,7 +163,7 @@ classdef OuterTotalisticCellularAutomata < handle
             otca.readOut = readOut;
             
             % Mean squared testing error
-            err = (T - Y).^2;
+            err = (T(:,len/2:end) - Y(:,len/2:end)).^2;
             err = mean(err(:));
             fit = 1/err;
             
