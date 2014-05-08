@@ -4,11 +4,11 @@ clear functions; %delete persistent variables
 close;
 
 % Make single Mackey
-T = makeMackeyGlass(0.5+rand,17,0.1,50000);
-T = tanh(T-1); % squash into (-1,1)
+%T = makeMackeyGlass(0.5+rand,17,0.1,50000);
+%T = tanh(T-1); % squash into (-1,1)
 
 %Make sine wave time series
-%T = makeSineSeries(3,[1 6],50,1000);
+T = makeSineSeries(3,[6 20],50,1000);
 
 T = T(10001:10:end); % subsample
 X = 0.2*ones(size(T)); % constant bias
@@ -28,19 +28,19 @@ options = {true};
 % initialize function handles for ga
 %make_individual = @() OuterTotalisticCellularAutomata.random(dims,K,0.3);
 %make_individual = @() OuterTotalisticCellularAutomata.smooth(dims,K,0.3);
-make_individual = @() OuterTotalisticCellularAutomata.gauss(dims,K);
+make_individual = @() OuterTotalisticCellularAutomata.gauss(dims,K,0.8);
 crossover = @(par1,par2) OuterTotalisticCellularAutomata.smoothCrossover(par1,par2);
 %mutate = @(individual, rate) OuterTotalisticCellularAutomata.mutate(individual, rate);
-mutate = @(individual, rate) OuterTotalisticCellularAutomata.gaussMutate(individual, rate, true); % true for cts mutation
+mutate = @(individual, rate) OuterTotalisticCellularAutomata.gaussMutate(individual, rate, false); % true for cts mutation
 
 % run ga
 ga = GeneticAlgorithm(make_individual, indvFit, crossover, mutate, options);
-max_generations = 5;%500;
-population_size = 5;%100;
+max_generations = 100;
+population_size = 120;
 num_elites = 1;%5;
 num_new = 1;%5;
 crossover_rate = @(t) 0.8;
-mutation_rate = @(t) 0.5*(0.975^t);
+mutation_rate = @(t) 0.2*exp(-3*t/max_generations);
 tic
 
 disp('Starting evolution...')

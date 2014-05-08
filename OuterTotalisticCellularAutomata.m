@@ -232,7 +232,7 @@ classdef OuterTotalisticCellularAutomata < handle
                 xlabel('time');
                 ylabel('unit activation');
                 subplot(3,1,3);
-                imshow(reshape(A(:,t),[dims(1),prod(dims(2:end))])/mx);
+                imshow(reshape(A(:,t),[dims(1),prod(dims(2:end))]), []);
                 title('reservoir over time (brightness = activation)')
                 pause(framerate); % ~seconds per frame
             end
@@ -302,8 +302,8 @@ classdef OuterTotalisticCellularAutomata < handle
             persistent grid
             if (isempty(grid))
                 disp('Building neighborhood grid...')
-                grid = OuterTotalisticCellularAutomata.makeGrid(dims);
-                %grid = OuterTotalisticCellularAutomata.makeGridPeriodic(dims);
+                %grid = OuterTotalisticCellularAutomata.makeGrid(dims);
+                grid = OuterTotalisticCellularAutomata.makeGridPeriodic(dims);
             end
             rule = randi(K, [K+1, 6*K+1]); % 6 to include input/feedback
             rule(rand(size(rule)) < lambda) = 0;
