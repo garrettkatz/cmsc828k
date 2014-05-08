@@ -5,12 +5,12 @@
 clear
 clear functions
 
-Nidv = 3;
-Ngen = 100;
+Nidv = 20;
+Ngen = 300;
 dims = [20 20];
 K = 100;
 
-rate = @(t) 0.2*exp(-4*t/Ngen);
+rate = @(t) 0.2*exp(-2*t/Ngen);
 make_individual = @() OuterTotalisticCellularAutomata.gauss(dims,K,0.8);
 crossover = @(par1,par2) OuterTotalisticCellularAutomata.smoothCrossover(par1,par2);
 mutate = @(individual, rate) OuterTotalisticCellularAutomata.gaussMutate(individual, rate, false);
